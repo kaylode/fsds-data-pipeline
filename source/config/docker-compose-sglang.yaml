@@ -27,6 +27,8 @@ services:
       - "/dev/nvidia5:/dev/nvidia5"
       - "/dev/nvidia6:/dev/nvidia6"
     volumes:
+      - "../.tmp/cache/pip:/root/.cache/pip"
+      - "/usr/bin/nvidia-smi:/usr/bin/nvidia-smi:ro"
       - "${SGLANG_LLM_CKPT_DIR}:/sgl-workspace/llm"
       - "/usr/lib/x86_64-linux-gnu/libcuda.so.1:/usr/lib64-nvidia/libcuda.so.1:ro"
       - "/usr/lib/x86_64-linux-gnu/libcuda.so.555.42.06:/usr/lib64-nvidia/libcuda.so.555.42.06:ro"
@@ -41,6 +43,7 @@ services:
       -c "
       ldconfig /usr/lib64-nvidia &&
       pip install 'vllm==0.9.2' --break-system-packages &&
+      pip install mamba-ssm causal-conv1d --no-build-isolation 'torch==2.7.0' 'triton==3.3.0' --break-system-packages &&
       python3 -m sglang.launch_server
       --model-path /sgl-workspace/llm
       --host 0.0.0.0
@@ -48,7 +51,8 @@ services:
       --max-running-requests 8
       --mem-fraction-static 0.9
       --sampling-backend pytorch
-      --disable-cuda-graph"
+      --disable-cuda-graph
+      --trust-remote-code"
     deploy:
       resources:
         reservations:

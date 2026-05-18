@@ -2,19 +2,19 @@
  
 # Run all containers under rootless Podman with local cache redirection
 up:
-	@bash scripts/podman/run_podman.sh up -d
+	@bash scripts/podman/run_podman.sh core up -d
 
 # Stop all containers
 down:
-	@bash scripts/podman/run_podman.sh down
+	@bash scripts/podman/run_podman.sh core down
 
 # View container logs
 logs:
-	@bash scripts/podman/run_podman.sh logs -f
+	@bash scripts/podman/run_podman.sh core logs -f
 
 # View container status
 ps:
-	@bash scripts/podman/run_podman.sh ps
+	@bash scripts/podman/run_podman.sh core ps
 
 # Run the Python check_ports script
 check-ports:
@@ -38,16 +38,16 @@ simulate:
 
 # Isolated SGLang Inference Container Targets
 sglang-up:
-	@bash scripts/podman/run_vllm.sh up -d
+	@bash scripts/podman/run_podman.sh sglang up -d
 
 sglang-down:
-	@bash scripts/podman/run_vllm.sh down
+	@bash scripts/podman/run_podman.sh sglang down
 
 sglang-logs:
-	@bash scripts/podman/run_vllm.sh logs -f
+	@bash scripts/podman/run_podman.sh sglang logs -f
 
 sglang-test:
-	@uv run scripts/misc/test_sglang.py
+	@uv run scripts/llm/test_sglang.py --system "You are an expert cardiologist." --prompt "Explain heart failure in simple terms."
 
 # Help command to show all options
 help:
