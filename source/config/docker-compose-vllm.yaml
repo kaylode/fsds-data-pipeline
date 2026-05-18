@@ -1,0 +1,40 @@
+# config/docker-compose-vllm.yaml
+# Isolated vLLM OpenAI-Compatible API server configuration for GPU accelerated model inference
+
+version: '3.8'
+
+services:
+  vllm:
+    image: docker.io/vllm/vllm-openai:latest
+    container_name: vllm-server
+    ipc: host
+    network_mode: host
+    environment:
+      - HF_TOKEN=${HF_TOKEN}
+      - TRITON_LIBCUDA_PATH=/usr/lib/x86_64-linux-gnu
+      - VLLM_MODEL=${VLLM_MODEL}
+      - VLLM_PORT=${VLLM_PORT}
+      - VLLM_EXTRA_ARGS=${VLLM_EXTRA_ARGS}
+    devices:
+      - "/dev/nvidiactl:/dev/nvidiactl"
+      - "/dev/nvidia-uvm:/dev/nvidia-uvm"
+      - "/dev/nvidia-uvm-tools:/dev/nvidia-uvm-tools"
+      - "/dev/nvidia0:/dev/nvidia0"
+      - "/dev/nvidia1:/dev/nvidia1"
+      - "/dev/nvidia2:/dev/nvidia2"
+      - "/dev/nvidia3:/dev/nvidia3"
+      - "/dev/nvidia4:/dev/nvidia4"
+      - "/dev/nvidia5:/dev/nvidia5"
+      - "/dev/nvidia6:/dev/nvidia6"
+    volumes:
+      - "${VLLM_LOCAL_MODEL_PATH}:/model:ro"
+      - "/usr/lib/x86_64-linux-gnu/libcuda.so.1:/usr/lib/x86_64-linux-gnu/libcuda.so.1:ro"
+      - "/usr/lib/x86_64-linux-gnu/libcuda.so.555.42.06:/usr/lib/x86_64-linux-gnu/libcuda.so.555.42.06:ro"
+      - "/usr/lib/x86_64-linux-gnu/libnvidia-ml.so.1:/usr/lib/x86_64-linux-gnu/libnvidia-ml.so.1:ro"
+      - "/usr/lib/x86_64-linux-gnu/libnvidia-ml.so.555.42.06:/usr/lib/x86_64-linux-gnu/libnvidia-ml.so.555.42.06:ro"
+      - "/usr/lib/x86_64-linux-gnu/libnvidia-ptxjitcompiler.so.1:/usr/lib/x86_64-linux-gnu/libnvidia-ptxjitcompiler.so.1:ro"
+      - "/usr/lib/x86_64-linux-gnu/libnvidia-ptxjitcompiler.so.555.42.06:/usr/lib/x86_64-linux-gnu/libnvidia-ptxjitcompiler.so.555.42.06:ro"
+      - "/usr/lib/x86_64-linux-gnu/libnvidia-allocator.so.1:/usr/lib/x86_64-linux-gnu/libnvidia-allocator.so.1:ro"
+      - "/usr/lib/x86_64-linux-gnu/libnvidia-allocator.so.555.42.06:/usr/lib/x86_64-linux-gnu/libnvidia-allocator.so.555.42.06:ro"
+    entrypoint: ["/bin/sh", "-c"]
+    command: ["vllm serve --model $$VLLM_MODEL --port $$VLLM_PORT $$VLLM_EXTRA_ARGS"]
