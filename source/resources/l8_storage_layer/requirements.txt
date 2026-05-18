@@ -1,6 +1,0 @@
-deltalake
-minio
-trino
-psycopg2-binary
-pandas
-pyarrow
