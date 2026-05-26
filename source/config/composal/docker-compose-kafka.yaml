@@ -18,9 +18,9 @@ services:
       # These settings configure Kafka to run in KRaft mode (no ZooKeeper)
       KAFKA_PROCESS_ROLES: controller,broker
       KAFKA_NODE_ID: 1
-      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@127.0.0.1:${KAFKA_CONTROLLER_PORT:-9093}"
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@127.0.0.1:${KAFKA_CONTROLLER_PORT}"
       # Kafka listeners and advertised listeners
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:${KAFKA_PORT},CONTROLLER://0.0.0.0:${KAFKA_CONTROLLER_PORT:-9093}
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:${KAFKA_PORT},CONTROLLER://0.0.0.0:${KAFKA_CONTROLLER_PORT}
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       # Advertise different addresses for internal vs external clients
@@ -48,12 +48,6 @@ services:
       - PGPORT=$POSTGRES_PORT
     volumes:
       - ../../.tmp/postgres-data:/var/lib/postgresql/data
-      - ./postgres-init:/docker-entrypoint-initdb.d
-    healthcheck:
-      test: ["CMD", "pg_isready", "-U", "postgres"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
     command: ["postgres", "-c", "wal_level=logical"]
 
   # It is essentially Kafka Connect with the Debezium connector pre-installed.
@@ -137,80 +131,6 @@ services:
       - "1000:0:1"
     environment:
       - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@127.0.0.1:${POSTGRES_PORT}/${POSTGRES_DB}?sslmode=disable
-    command: /pgweb --bind=0.0.0.0 --listen=${PGWEB_PORT}
+    command: ["/pgweb", "--bind=0.0.0.0", "--listen=${PGWEB_PORT}"]
     depends_on:
       - postgres
-
-  minio:
-    image: docker.io/minio/minio:latest
-    container_name: minio
-    network_mode: host
-    user: "1000:1000"
-    x-podman.uidmaps:
-      - "1000:0:1"
-    x-podman.gidmaps:
-      - "1000:0:1"
-    environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
-    command: server /data --address ":${MINIO_PORT:-9000}" --console-address ":${MINIO_CONSOLE_PORT:-9001}"
-    volumes:
-      - ../../.tmp/minio-data:/data
-
-  hive-metastore:
-    image: docker.io/starburstdata/hive:3.1.2-e.18
-    container_name: hive-metastore
-    network_mode: host
-    user: "1000:1000"
-    x-podman.uidmaps:
-      - "1000:0:1"
-    x-podman.gidmaps:
-      - "1000:0:1"
-    environment:
-      HIVE_METASTORE_DRIVER: org.postgresql.Driver
-      HIVE_METASTORE_JDBC_URL: jdbc:postgresql://127.0.0.1:${POSTGRES_PORT:-5432}/${METASTORE_DB_NAME:-metastore}
-      HIVE_METASTORE_USER: ${METASTORE_DB_USER:-hive}
-      HIVE_METASTORE_PASSWORD: ${METASTORE_DB_PASSWORD:-hive}
-      S3_ENDPOINT: http://127.0.0.1:${MINIO_PORT:-9000}
-      S3_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
-      S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
-      S3_PATH_STYLE_ACCESS: "true"
-      REGION: ""
-      GOOGLE_CLOUD_KEY_FILE_PATH: ""
-      AZURE_ADL_CLIENT_ID: ""
-      AZURE_ADL_CREDENTIAL: ""
-      AZURE_ADL_REFRESH_URL: ""
-      AZURE_ABFS_STORAGE_ACCOUNT: ""
-      AZURE_ABFS_ACCESS_KEY: ""
-      AZURE_WASB_STORAGE_ACCOUNT: ""
-      AZURE_ABFS_OAUTH: ""
-      AZURE_ABFS_OAUTH_TOKEN_PROVIDER: ""
-      AZURE_ABFS_OAUTH_CLIENT_ID: ""
-      AZURE_ABFS_OAUTH_SECRET: ""
-      AZURE_ABFS_OAUTH_ENDPOINT: ""
-      AZURE_WASB_ACCESS_KEY: ""
-    depends_on:
-      - postgres
-      - minio
-
-  trino:
-    image: docker.io/trinodb/trino:480
-    container_name: trino
-    network_mode: host
-    user: "1000:1000"
-    x-podman.uidmaps:
-      - "1000:0:1"
-    x-podman.gidmaps:
-      - "1000:0:1"
-    environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
-      METASTORE_DB_NAME: ${METASTORE_DB_NAME:-metastore}
-      METASTORE_DB_USER: ${METASTORE_DB_USER:-hive}
-      METASTORE_DB_PASSWORD: ${METASTORE_DB_PASSWORD:-hive}
-    volumes:
-      - ./conf/trino/catalog:/etc/trino/catalog
-      - ./conf/trino/config.properties:/etc/trino/config.properties
-    depends_on:
-      - hive-metastore
-

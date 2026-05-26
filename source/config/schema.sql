@@ -1,5 +1,4 @@
 -- Unified Schema Definition for FSDS Patient Event Stream Database
--- Location: resources/database/schema.sql
 
 -- 1. Core Subjects Directory Table
 CREATE TABLE IF NOT EXISTS subjects (
