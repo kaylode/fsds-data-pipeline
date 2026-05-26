@@ -8,6 +8,7 @@
 # Get project directories
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PROJECT_ROOT="$( cd "$SCRIPT_DIR/../.." && pwd )"
+WORKSPACE_DIR="$( cd "$PROJECT_ROOT/.." && pwd )"
 
 # Go to project root
 cd "$PROJECT_ROOT"
@@ -17,7 +18,7 @@ STACK="core"
 COMMAND=""
 SHIFT_COUNT=0
 
-if [ "$1" = "core" ] || [ "$1" = "sglang" ]; then
+if [ "$1" = "core" ] || [ "$1" = "sglang" ] || [ "$1" = "storage" ]; then
     STACK="$1"
     COMMAND="${2:-up}"
     SHIFT_COUNT=2
@@ -35,14 +36,14 @@ else
 fi
 
 # Ensure .tmp directories exist
-mkdir -p ../.tmp/data ../.tmp/config/containers ../.tmp/cache
+mkdir -p "$WORKSPACE_DIR/.tmp/data" "$WORKSPACE_DIR/.tmp/config/containers" "$WORKSPACE_DIR/.tmp/cache"
 
 # Restore rootless config files if missing (e.g. after a clean)
-if [ ! -f "$PROJECT_ROOT/../.tmp/config/containers/containers.conf" ] && [ -f "$HOME/.config/containers/containers.conf" ]; then
+if [ ! -f "$WORKSPACE_DIR/.tmp/config/containers/containers.conf" ] && [ -f "$HOME/.config/containers/containers.conf" ]; then
     echo "⚙️ Restoring custom rootless Podman configurations from $HOME/.config/containers/..."
-    mkdir -p "$PROJECT_ROOT/../.tmp/config/containers"
-    cp "$HOME/.config/containers/containers.conf" "$PROJECT_ROOT/../.tmp/config/containers/containers.conf"
-    cp "$HOME/.config/containers/storage.conf" "$PROJECT_ROOT/../.tmp/config/containers/storage.conf"
+    mkdir -p "$WORKSPACE_DIR/.tmp/config/containers"
+    cp "$HOME/.config/containers/containers.conf" "$WORKSPACE_DIR/.tmp/config/containers/containers.conf"
+    cp "$HOME/.config/containers/storage.conf" "$WORKSPACE_DIR/.tmp/config/containers/storage.conf"
 fi
 
 # Verify .env exists
@@ -59,10 +60,21 @@ set -a
 source .env
 set +a
 
+# Ensure both podman-compose and podman use the exact same base podman binary and rootless configurations
+export PODMAN="$HOME/bin/podman"
+export CONTAINERS_CONF="$WORKSPACE_DIR/.tmp/config/containers/containers.conf"
+export CONTAINERS_STORAGE_CONF="$WORKSPACE_DIR/.tmp/config/containers/storage.conf"
+export XDG_RUNTIME_DIR="$WORKSPACE_DIR/.tmp/run"
+mkdir -p -m 700 "$XDG_RUNTIME_DIR"
+
 # Configure stack-specific variables
 if [ "$STACK" = "sglang" ]; then
     COMPOSE_FILE="config/docker-compose-sglang.yaml"
     SERVICE_NAME="SGLang"
+elif [ "$STACK" = "storage" ]; then
+    echo "⚠️ Stack 'storage' has been merged into 'core'. Running 'core' stack instead."
+    COMPOSE_FILE="config/docker-compose.yaml"
+    SERVICE_NAME="Core FSDS"
 else
     COMPOSE_FILE="config/docker-compose.yaml"
     SERVICE_NAME="Core FSDS"

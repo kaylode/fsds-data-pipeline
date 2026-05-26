@@ -40,12 +40,12 @@ chmod +x "$BIN_DIR"/podman "$BIN_DIR"/crun "$BIN_DIR"/conmon "$BIN_DIR"/fuse-ove
 echo "⚙️ Writing custom rootless configuration files..."
 
 # Generate custom storage.conf
-# Store runtime and overlay layers on the local non-NFS /tmp/ filesystem to support rootless user namespaces
+# Store runtime and overlay layers in the local workspace directory
 cat <<EOF > "$WORKSPACE_DIR/.tmp/config/containers/storage.conf"
 [storage]
 driver = "overlay"
-runroot = "/tmp/podman-$USER/runroot"
-graphroot = "/tmp/podman-$USER/storage"
+runroot = "$WORKSPACE_DIR/.tmp/runroot"
+graphroot = "$WORKSPACE_DIR/.tmp/storage"
 
 [storage.options]
 additionalimagestores = []

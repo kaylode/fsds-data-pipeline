@@ -51,7 +51,7 @@ def main():
     parser.add_argument(
         "--host", 
         type=str, 
-        default=os.getenv("SGLANG_LLM_EXPOSE_HOST", "g129"),
+        default=os.getenv("SGLANG_LLM_EXPOSE_HOST", "localhost"),
         help="The exposed host of the SGLang server."
     )
     
@@ -89,7 +89,7 @@ def main():
     )
     
     try:
-        with urllib.request.urlopen(req, timeout=45) as response:
+        with urllib.request.urlopen(req, timeout=120) as response:
             res_body = response.read().decode("utf-8")
             data = json.loads(res_body)
             
