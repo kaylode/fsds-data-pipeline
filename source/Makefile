@@ -1,6 +1,8 @@
-.PHONY: up down logs ps clean check-ports install-podman simulate sglang-up sglang-down sglang-logs sglang-test help
- 
-# Run all containers under rootless Podman with local cache redirection
+.PHONY: up down logs ps clean check-ports install-podman generate ingest stream query help
+
+# ─── Infrastructure ───────────────────────────────────────────────────────────
+
+# Start all core containers (Postgres, Kafka, MinIO, Hive Metastore, Trino)
 up:
 	@bash scripts/podman/run_podman.sh core up -d
 
@@ -8,59 +10,78 @@ up:
 down:
 	@bash scripts/podman/run_podman.sh core down
 
-# View container logs
+# Follow container logs
 logs:
 	@bash scripts/podman/run_podman.sh core logs -f
 
-# View container status
+# Show container status
 ps:
 	@bash scripts/podman/run_podman.sh core ps
 
-# Run the Python check_ports script
+# Check if configured ports are in use
 check-ports:
 	@~/.local/bin/uv run scripts/misc/check_ports.py
 
-# Clean up all containers, images, and wipe the local .tmp directory
+# Reset Podman storage and wipe the .tmp directory
 clean:
 	@bash scripts/misc/clean_tmp.sh
-
-# Drop the core EHR database tables to reset the simulation environment
-clean-db:
-	@~/.local/bin/uv run python -c "from core.database import get_db_connection, drop_db_schema; drop_db_schema(get_db_connection())"
-
 
 # Download and install the full native Podman server package statically without root
 install-podman:
 	@bash scripts/podman/install_podman_static.sh
 
-simulate:
-	~/.local/bin/uv run scripts/data/ehr_simulator.py --num_subjects 50 --speedup 86400
+# ─── EHR Data Pipeline ───────────────────────────────────────────────────────
 
-# Isolated SGLang Inference Container Targets
-sglang-up:
-	@bash scripts/podman/run_podman.sh sglang up -d
+# Generate both offline (Parquet) and stream (JSON) synthetic EHR data
+#   Offline: patients, wards, event_metadata, visits, events  → data/synthetic/
+#   Stream : clinical_event_stream.json                       → data/synthetic/
+generate:
+	@echo "🏭  Generating offline EHR Parquet tables..."
+	@uv run scripts/course-work/1a_generate_offline_ehr.py --mode offline
+	@echo "📡  Generating streaming EHR JSON events..."
+	@uv run scripts/course-work/1a_generate_offline_ehr.py --mode stream
+	@echo "✅  Generation complete."
 
-sglang-down:
-	@bash scripts/podman/run_podman.sh sglang down
+# Ingest offline historical data into the Bronze Lakehouse (MinIO / Delta / Trino)
+#   Topics: raw_patients, raw_wards, raw_events
+ingest:
+	@echo "📥  Ingesting historical EHR data into Bronze layer..."
+	@uv run scripts/course-work/2a_ingest_to_bronze.py
+	@echo "✅  Ingestion complete."
 
-sglang-logs:
-	@bash scripts/podman/run_podman.sh sglang logs -f
+# Simulate live event streaming: publish JSON events to a Kafka topic
+stream:
+	@echo "🚀  Publishing clinical events to Kafka topic..."
+	@uv run scripts/course-work/1b_produce_stream.py
+	@echo "✅  Streaming complete."
 
-sglang-test:
-	@uv run scripts/llm/test_sglang.py --system "You are an expert cardiologist." --prompt "Explain heart failure in simple terms."
+# Pull from Kafka topic → append to Delta Lake, then query the Bronze layer for an overview
+consume:
+	@echo "🔄  Consuming Kafka topic → Bronze Delta Lake..."
+	@uv run scripts/course-work/2b_consume_stream.py
 
-# Help command to show all options
+query:
+	@echo "🔍  Querying Bronze layer overview..."
+	@uv run scripts/course-work/3_query_bronze.py
+
+# ─── Help ────────────────────────────────────────────────────────────────────
+
 help:
-	@echo "Available commands in this Makefile:"
-	@echo "  make up             - Start all core FSDS containers in the background"
-	@echo "  make down           - Stop and remove all core FSDS containers"
-	@echo "  make logs           - Follow logs of all core FSDS containers"
-	@echo "  make ps             - List status of all core FSDS containers"
-	@echo "  make check-ports    - Check if configured ports are occupied"
-	@echo "  make clean          - Reset Podman storage and wipe the .tmp directory"
-	@echo "  make install-podman - Install native statically-linked Podman server"
-	@echo "  make simulate       - Run EHR simulator script"
-	@echo "  make sglang-up      - Start isolated SGLang GPU inference container"
-	@echo "  make sglang-down    - Stop isolated SGLang GPU inference container"
-	@echo "  make sglang-logs    - Follow logs of the SGLang inference container"
-	@echo "  make sglang-test    - Send a test prompt query to the SGLang server"
+	@echo ""
+	@echo "  FSDS EHR Pipeline — available targets"
+	@echo "  ────────────────────────────────────────────────────────────────"
+	@echo "  Infrastructure"
+	@echo "    make up              Start all core containers"
+	@echo "    make down            Stop all containers"
+	@echo "    make logs            Follow container logs"
+	@echo "    make ps              List container status"
+	@echo "    make check-ports     Check if configured ports are in use"
+	@echo "    make clean           Reset Podman storage and wipe .tmp"
+	@echo "    make install-podman  Install native statically-linked Podman"
+	@echo ""
+	@echo "  EHR Data Pipeline"
+	@echo "    make generate        Generate offline Parquet + streaming JSON data"
+	@echo "    make ingest          Ingest historical data into Bronze Lakehouse"
+	@echo "    make stream          Publish stream events to Kafka topic"
+	@echo "    make query           Consume Kafka → Delta Lake, then show overview"
+	@echo ""

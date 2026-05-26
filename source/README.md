@@ -105,32 +105,6 @@ make down
 
 ---
 
-## 🔬 Running the CDC Demo Walkthrough
-
-We have bundled a complete, production-grade baseline verification script in the [resources/l7_ingestion_layer/cdc_demo/](resources/l7_ingestion_layer/cdc_demo/) folder.
-
-### Step 1: Initialize Database & Connector
-Boot up your database and Debezium connect targets, then register the PostgreSQL connector (run this from the demo directory):
-```bash
-cd resources/l7_ingestion_layer/cdc_demo
-bash register.sh
-```
-
-### Step 2: Start DB Ingestion Stream
-Start inserting continuous mock rows into PostgreSQL (updates once per second):
-```bash
-# Executed via uv run to comply with python requirements
-uv run python db_ingestion.py
-```
-
-### Step 3: Run the Real-Time CDC Consumer
-In a new terminal window, run the consumer script to watch database updates get captured by Debezium, pushed to Kafka, and consumed in real time:
-```bash
-uv run python cdc.py
-```
-
----
-
 ## 🏥 Real-Time EHR Patient Event CDC Pipeline (Production Walkthrough)
 
 We have engineered an advanced, end-to-end clinical simulation and Change Data Capture pipeline using processed **MEDS** patient records. 
