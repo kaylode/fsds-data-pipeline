@@ -72,6 +72,7 @@ def ingest_to_minio(paths):
     # 1. Patients
     logger.info("Writing raw_patients table to S3/Delta...")
     df_patients = pd.read_parquet(paths["patients"])
+    df_patients["bronze_ingest_ts"] = pd.Timestamp.now(tz="UTC")
     write_deltalake(
         f"s3://{BUCKET}/topics/raw_patients",
         df_patients,
@@ -82,6 +83,7 @@ def ingest_to_minio(paths):
     # 2. Wards
     logger.info("Writing raw_wards table to S3/Delta...")
     df_wards = pd.read_parquet(paths["wards"])
+    df_wards["bronze_ingest_ts"] = pd.Timestamp.now(tz="UTC")
     write_deltalake(
         f"s3://{BUCKET}/topics/raw_wards",
         df_wards,
@@ -92,6 +94,7 @@ def ingest_to_minio(paths):
     # 3. Event Metadata
     logger.info("Writing raw_event_metadata table to S3/Delta...")
     df_meta = pd.read_parquet(paths["event_metadata"])
+    df_meta["bronze_ingest_ts"] = pd.Timestamp.now(tz="UTC")
     write_deltalake(
         f"s3://{BUCKET}/topics/raw_event_metadata",
         df_meta,
@@ -102,6 +105,7 @@ def ingest_to_minio(paths):
     # 4. Visits
     logger.info("Writing raw_visits table to S3/Delta...")
     df_visits = pd.read_parquet(paths["visits"])
+    df_visits["bronze_ingest_ts"] = pd.Timestamp.now(tz="UTC")
     write_deltalake(
         f"s3://{BUCKET}/topics/raw_visits",
         df_visits,
@@ -112,6 +116,7 @@ def ingest_to_minio(paths):
     # 5. Events
     logger.info("Writing raw_events table to S3/Delta...")
     df_events = pd.read_parquet(paths["events"])
+    df_events["bronze_ingest_ts"] = pd.Timestamp.now(tz="UTC")
     write_deltalake(
         f"s3://{BUCKET}/topics/raw_events",
         df_events,

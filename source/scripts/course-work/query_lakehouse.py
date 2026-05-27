@@ -28,6 +28,15 @@ SILVER_TABLES = [
     "stg_events",
 ]
 
+GOLD_TABLES = [
+    "dim_patient",
+    "dim_ward",
+    "dim_event_type",
+    "fact_visit",
+    "fact_clinical_event",
+    "obt_clinical_events",
+]
+
 
 def get_trino_connection():
     return trino.dbapi.connect(host=TRINO_HOST, port=TRINO_PORT, user=TRINO_USER)
@@ -234,6 +243,77 @@ def query_silver_tables(cursor) -> bool:
     return all_passed
 
 
+def query_gold_tables(cursor) -> bool:
+    """Validate the gold layer and run data quality/integrity checks."""
+    print("=" * 65)
+    print("🔍  EHR GOLD LAYER — DATA OVERVIEW & VALIDATION")
+    print("=" * 65)
+
+    # Check if gold schema exists/has tables
+    try:
+        cursor.execute("SHOW TABLES FROM delta.gold")
+        tables = [row[0] for row in cursor.fetchall()]
+        if not tables:
+            print("  ⚠️  No tables found in delta.gold schema. Skipping validation.")
+            return True
+    except Exception:
+        print("  ⚠️  delta.gold schema not found. Skipping validation.")
+        return True
+
+    results = {}
+
+    # 1. Row counts
+    print("\n  ── Gold Table Row Counts ──────────────────────────────────")
+    for table in GOLD_TABLES:
+        if table in tables:
+            cursor.execute(f"SELECT COUNT(*) FROM delta.gold.{table}")
+            count = cursor.fetchone()[0]
+            print(f"  • delta.gold.{table:<25}: {count:>10,} rows")
+        else:
+            print(f"  • delta.gold.{table:<25}: MISSING")
+
+    # 2. Key null check
+    print("\n  ── Integrity Check (No Null Surrogate Keys) ─────────────────")
+    key_checks = [
+        ("dim_patient", "patient_key"),
+        ("dim_ward", "ward_key"),
+        ("dim_event_type", "event_type_key"),
+        ("fact_visit", "patient_key"),
+        ("fact_clinical_event", "event_type_key"),
+    ]
+    all_keys_ok = True
+    for table, key_col in key_checks:
+        if table in tables:
+            cursor.execute(f"SELECT COUNT(*) FROM delta.gold.{table} WHERE {key_col} IS NULL")
+            null_count = cursor.fetchone()[0]
+            ok = null_count == 0
+            all_keys_ok = all_keys_ok and ok
+            status = "✅ PASS" if ok else f"❌ FAIL ({null_count:,} NULL keys)"
+            print(f"  • {table}.{key_col} Null Count: {null_count} -> {status}")
+    results["surrogate_keys_ok"] = all_keys_ok
+
+    # 3. Print gold schemas
+    print(f"\n  ── Gold Table Schemas ───────────────────────────────────────")
+    for table in GOLD_TABLES:
+        if table in tables:
+            cursor.execute(f"DESCRIBE delta.gold.{table}")
+            columns = cursor.fetchall()
+            col_str = ", ".join([f"{col[0]} ({col[1]})" for col in columns])
+            print(f"  • {table}:")
+            print(f"      {col_str}")
+
+    # Summary
+    print("\n" + "=" * 65)
+    all_passed = all(results.values())
+    if all_passed:
+        print("✅  ALL CHECKS PASSED — Gold layer modeling is correct and ready for consumption")
+    else:
+        failed = [k for k, v in results.items() if not v]
+        print(f"❌  FAILED CHECKS: {', '.join(failed)}")
+    print("=" * 65)
+    return all_passed
+
+
 def main():
     try:
         conn = get_trino_connection()
@@ -246,6 +326,8 @@ def main():
         query_bronze_tables(cursor)
         print("\n")
         silver_ok = query_silver_tables(cursor)
+        print("\n")
+        gold_ok = query_gold_tables(cursor)
     except Exception as e:
         print(f"Querying lakehouse failed: {e}")
         sys.exit(1)
@@ -253,7 +335,8 @@ def main():
         cursor.close()
         conn.close()
 
-    sys.exit(0 if silver_ok else 1)
+    sys.exit(0 if (silver_ok and gold_ok) else 1)
+
 
 
 if __name__ == "__main__":

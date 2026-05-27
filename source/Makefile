@@ -72,8 +72,13 @@ consume:
 # Submit PySpark job from host to Spark Cluster for Silver transformations
 transform:
 	@echo "✨  Running PySpark Silver layer transformations..."
-	@uv run scripts/course-work/4a_silver_transform.py
+	@uv run scripts/course-work/3_transform_to_silver.py
 	@echo "✅  Silver transformations complete."
+
+golden:
+	@echo "✨  Running PySpark Gold layer transformations..."
+	@uv run scripts/course-work/4_transform_to_gold.py
+	@echo "✅  Gold transformations complete."
 
 # Query and validate Lakehouse (Bronze & Silver) tables in Trino
 query-lakehouse:
