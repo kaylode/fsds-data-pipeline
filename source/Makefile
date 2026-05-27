@@ -1,10 +1,15 @@
-.PHONY: up down logs ps clean check-ports install-podman generate ingest stream query help
+.PHONY: up down logs ps clean check-ports free-ports install-podman generate ingest stream query help datahub-ingest
 
 # ─── Infrastructure ───────────────────────────────────────────────────────────
 
 # Start all core containers (Postgres, Kafka, MinIO, Hive Metastore, Trino)
 up:
 	@bash scripts/podman/run_podman.sh core up -d
+# 	@echo "⌛ Waiting for Postgres to accept connections..."
+# 	@until podman exec postgres pg_isready -U postgres >/dev/null 2>&1; do sleep 1; done
+# 	@echo "🔑 Ensuring all databases and roles exist..."
+# 	@bash scripts/misc/ensure_dbs.sh
+# 	@echo "🚀 Infrastructure is up and configured."
 
 # Stop all containers
 down:
@@ -12,7 +17,7 @@ down:
 
 # Follow container logs
 logs:
-	@bash scripts/podman/run_podman.sh core logs -f
+	@bash scripts/podman/run_podman.sh core logs
 
 # Show container status
 ps:
@@ -21,6 +26,10 @@ ps:
 # Check if configured ports are in use
 check-ports:
 	@~/.local/bin/uv run scripts/misc/check_ports.py
+
+# Kill any processes occupying the configured ports
+free-ports:
+	@~/.local/bin/uv run scripts/misc/free_ports.py
 
 # Reset Podman storage and wipe the .tmp directory
 clean:
@@ -60,9 +69,20 @@ consume:
 	@echo "🔄  Consuming Kafka topic → Bronze Delta Lake..."
 	@uv run scripts/course-work/2b_consume_stream.py
 
-query:
-	@echo "🔍  Querying Bronze layer overview..."
-	@uv run scripts/course-work/3_query_bronze.py
+# Submit PySpark job from host to Spark Cluster for Silver transformations
+transform:
+	@echo "✨  Running PySpark Silver layer transformations..."
+	@uv run scripts/course-work/4a_silver_transform.py
+	@echo "✅  Silver transformations complete."
+
+# Query and validate Lakehouse (Bronze & Silver) tables in Trino
+query-lakehouse:
+	@echo "🔍  Querying and validating Lakehouse tables..."
+	@uv run scripts/course-work/query_lakehouse.py
+
+# Ingest all data sources to DataHub GMS
+datahub-ingest:
+	@bash scripts/misc/datahub_ingest.sh
 
 # ─── Help ────────────────────────────────────────────────────────────────────
 
@@ -76,6 +96,7 @@ help:
 	@echo "    make logs            Follow container logs"
 	@echo "    make ps              List container status"
 	@echo "    make check-ports     Check if configured ports are in use"
+	@echo "    make free-ports      Kill all processes occupying configured ports"
 	@echo "    make clean           Reset Podman storage and wipe .tmp"
 	@echo "    make install-podman  Install native statically-linked Podman"
 	@echo ""
@@ -83,5 +104,7 @@ help:
 	@echo "    make generate        Generate offline Parquet + streaming JSON data"
 	@echo "    make ingest          Ingest historical data into Bronze Lakehouse"
 	@echo "    make stream          Publish stream events to Kafka topic"
-	@echo "    make query           Consume Kafka → Delta Lake, then show overview"
+	@echo "    make query-lakehouse Query and validate Lakehouse (Bronze + Silver) tables"
+	@echo "    make transform       Run PySpark Silver layer transformations"
+	@echo "    make datahub-ingest  Ingest all data sources to DataHub GMS"
 	@echo ""
