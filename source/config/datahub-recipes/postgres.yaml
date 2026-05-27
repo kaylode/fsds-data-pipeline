@@ -1,0 +1,11 @@
+source:
+  type: "postgres"
+  config:
+    host_port: "127.0.0.1:${POSTGRES_PORT}"
+    database: "${POSTGRES_DB}"
+    username: "${POSTGRES_USER}"
+    password: "${POSTGRES_PASSWORD}"
+sink:
+  type: "datahub-rest"
+  config:
+    server: "${DATAHUB_GMS_URL}"

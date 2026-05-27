@@ -1,0 +1,10 @@
+source:
+  type: "trino"
+  config:
+    host_port: "127.0.0.1:${TRINO_PORT}"
+    database: "delta"
+    username: "trino"
+sink:
+  type: "datahub-rest"
+  config:
+    server: "${DATAHUB_GMS_URL}"

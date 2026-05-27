@@ -135,8 +135,9 @@ services:
   # Official Apache Spark image. Runs as UID 185 ('spark' user).
   # Jobs are submitted from the host via: uv run spark-submit --master spark://127.0.0.1:7077
   spark-master:
-    image: docker.io/apache/spark:3.5.6-scala2.12-java11-python3-ubuntu
+    image: docker.io/apache/spark:3.5.3-scala2.12-java11-python3-ubuntu
     container_name: spark-master
+    hostname: spark-master
     network_mode: host
     user: "185:185"
     x-podman.uidmaps:
@@ -156,7 +157,6 @@ services:
       - "${SPARK_WEBUI_PORT:-8089}"
     environment:
       SPARK_NO_DAEMONIZE: "true"
-      SPARK_LOCAL_IP: "127.0.0.1"
     volumes:
       - ../../.tmp/spark-logs:/opt/spark/logs
       - ./conf/spark/spark-defaults.conf:/opt/spark/conf/spark-defaults.conf:ro
@@ -164,8 +164,9 @@ services:
       - minio
 
   spark-worker:
-    image: docker.io/apache/spark:3.5.6-scala2.12-java11-python3-ubuntu
+    image: docker.io/apache/spark:3.5.3-scala2.12-java11-python3-ubuntu
     container_name: spark-worker
+    hostname: spark-worker
     network_mode: host
     user: "185:185"
     x-podman.uidmaps:
@@ -181,7 +182,6 @@ services:
       SPARK_WORKER_CORES: "${SPARK_WORKER_CORES:-2}"
       SPARK_WORKER_WEBUI_PORT: "${SPARK_WORKER_WEBUI_PORT:-8091}"
       SPARK_NO_DAEMONIZE: "true"
-      SPARK_LOCAL_IP: "127.0.0.1"
     volumes:
       - ../../.tmp/spark-logs:/opt/spark/logs
       - ./conf/spark/spark-defaults.conf:/opt/spark/conf/spark-defaults.conf:ro

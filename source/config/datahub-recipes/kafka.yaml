@@ -1,0 +1,10 @@
+source:
+  type: "kafka"
+  config:
+    connection:
+      bootstrap: "127.0.0.1:${KAFKA_PORT}"
+      schema_registry_url: "http://127.0.0.1:${SCHEMA_REGISTRY_PORT}"
+sink:
+  type: "datahub-rest"
+  config:
+    server: "${DATAHUB_GMS_URL}"
