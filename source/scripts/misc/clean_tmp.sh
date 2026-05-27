@@ -3,9 +3,15 @@
 # Get project directories
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PROJECT_ROOT="$( cd "$SCRIPT_DIR/../.." && pwd )"
+if [ -f "$PROJECT_ROOT/.env" ]; then
+    set -a
+    source "$PROJECT_ROOT/.env"
+    set +a
+fi
 
 # Go to project root
 cd "$PROJECT_ROOT"
+export XDG_RUNTIME_DIR="$PROJECT_ROOT/../.tmp/run"
 
 FORCE=false
 if [ "$1" == "-f" ]; then
@@ -34,8 +40,8 @@ if command -v podman &> /dev/null && [ -f .env ]; then
     podman system reset -f &>/dev/null
 fi
 
-echo "🧹 Deleting $PROJECT_ROOT/.tmp..."
-rm -rf "$PROJECT_ROOT/.tmp"
+# echo "🧹 Deleting $PROJECT_ROOT/.tmp..."
+# rm -rf "$PROJECT_ROOT/.tmp"
 
 # Storage is now fully contained in the workspace .tmp folder
 
