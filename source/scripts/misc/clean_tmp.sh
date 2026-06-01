@@ -20,7 +20,9 @@ fi
 if [ "$FORCE" = false ]; then
     echo "⚠️  Warning: This will:"
     echo "     • Stop all running containers"
-    echo "     • Wipe MinIO (Delta Lake), PostgreSQL, Redis, and Kafka data"
+    echo "     • Wipe MinIO (Delta Lake), PostgreSQL, Redis, and Kafka data
+     • Delete generated synthetic EHR data and ML datasets
+     • Delete the Feast feature store registry (registry.db)"
     echo "     • Reset Podman storage"
     echo "     • flink-lib/ (connector JARs) will be preserved"
     read -p "Are you sure you want to proceed? (y/N) " -n 1 -r
@@ -68,5 +70,11 @@ for dir in "${DATA_DIRS[@]}"; do
         echo "   removed $dir/"
     fi
 done
+
+# 4. Wipe generated pipeline data (synthetic EHR, ML datasets, Feast registry)
+echo "🗑️  Wiping generated data and feature store registry..."
+rm -rf "$PROJECT_ROOT/data/synthetic"
+rm -rf "$PROJECT_ROOT/data/ml"
+rm -f  "$PROJECT_ROOT/config/feature_store/data/registry.db"
 
 echo "✅ Clean complete. Run 'make up' then re-run the pipeline."

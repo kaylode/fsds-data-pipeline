@@ -159,7 +159,6 @@ services:
       SPARK_NO_DAEMONIZE: "true"
     volumes:
       - ../../.tmp/spark-logs:/opt/spark/logs
-      - ./conf/spark/spark-defaults.conf:/opt/spark/conf/spark-defaults.conf:ro
     depends_on:
       - minio
 
@@ -184,6 +183,5 @@ services:
       SPARK_NO_DAEMONIZE: "true"
     volumes:
       - ../../.tmp/spark-logs:/opt/spark/logs
-      - ./conf/spark/spark-defaults.conf:/opt/spark/conf/spark-defaults.conf:ro
     depends_on:
       - spark-master

@@ -22,6 +22,20 @@ TRINO_USER        = os.getenv("TRINO_USER", "trino")
 _spark_master_port = os.getenv("SPARK_MASTER_PORT", "7077")
 SPARK_MASTER       = os.getenv("SPARK_MASTER_URL", "local[*]")
 
+SPARK_PACKAGES                = "io.delta:delta-spark_2.12:3.3.0,org.apache.hadoop:hadoop-aws:3.3.4,com.amazonaws:aws-java-sdk-bundle:1.12.262"
+SPARK_EXECUTOR_CORES          = "2"
+SPARK_EXECUTOR_MEMORY         = "16g"
+SPARK_DRIVER_MEMORY           = "16g"
+SPARK_SHUFFLE_PARTITIONS      = "8"
+SPARK_S3A_MULTIPART_SIZE      = str(64 * 1024 * 1024)
+SPARK_S3A_MULTIPART_THRESHOLD = str(64 * 1024 * 1024)
+# bytebuffer pre-declares Content-Length=blocksize; the last chunk is smaller → IncompleteBody 400 from MinIO
+SPARK_S3A_FAST_UPLOAD_BUFFER  = "disk"
+SPARK_EVENT_LOG_ENABLED       = "true"
+_spark_log_path               = os.path.abspath(os.path.join(project_root, "..", ".tmp", "spark-logs"))
+os.makedirs(_spark_log_path, exist_ok=True)
+SPARK_EVENT_LOG_DIR           = f"file://{_spark_log_path}"
+
 ICD10_CHAPTERS = [
     ("I",    "A",  "B"),
     ("II",   "C",  "D4"),
@@ -48,39 +62,35 @@ ICD10_CHAPTERS = [
 ]
 
 def build_spark_session(app_name: str) -> SparkSession:
-    """
-    Builds a SparkSession connected to the Spark Standalone cluster.
-
-    Note on spark-defaults.conf (source/config/conf/spark/spark-defaults.conf):
-    The conf file is mounted at /opt/spark/conf/ inside the Spark containers and
-    is automatically applied to executors. However, when spark-submit runs from
-    the host, it only reads that file if $SPARK_CONF_DIR is set on the host.
-    The inline .config() calls below are therefore the authoritative source for
-    the driver (S3A credentials, Delta extensions, AQE settings), ensuring the
-    host-submitted driver can reach MinIO regardless of $SPARK_CONF_DIR.
-    """
     logger.info(f"Connecting to Spark cluster: {SPARK_MASTER} for {app_name}")
     spark = (
         SparkSession.builder
         .master(SPARK_MASTER)
         .appName(app_name)
-        .config("spark.hadoop.fs.s3a.endpoint",              f"http://{MINIO_HOST}:{MINIO_PORT}")
-        .config("spark.hadoop.fs.s3a.access.key",            MINIO_ACCESS_KEY)
-        .config("spark.hadoop.fs.s3a.secret.key",            MINIO_SECRET_KEY)
-        .config("spark.hadoop.fs.s3a.path.style.access",     "true")
-        .config("spark.hadoop.fs.s3a.impl",                  "org.apache.hadoop.fs.s3a.S3AFileSystem")
+        # S3A / MinIO
+        .config("spark.hadoop.fs.s3a.endpoint",               f"http://{MINIO_HOST}:{MINIO_PORT}")
+        .config("spark.hadoop.fs.s3a.access.key",             MINIO_ACCESS_KEY)
+        .config("spark.hadoop.fs.s3a.secret.key",             MINIO_SECRET_KEY)
+        .config("spark.hadoop.fs.s3a.path.style.access",      "true")
+        .config("spark.hadoop.fs.s3a.impl",                   "org.apache.hadoop.fs.s3a.S3AFileSystem")
         .config("spark.hadoop.fs.s3a.connection.ssl.enabled", "false")
         .config("spark.hadoop.fs.s3a.fast.upload",            "true")
-        .config("spark.hadoop.fs.s3a.fast.upload.buffer",     "disk")
-        .config("spark.hadoop.fs.s3a.multipart.size",         str(5 * 1024 * 1024))
-        .config("spark.hadoop.fs.s3a.multipart.threshold",    "1")
-        .config("spark.sql.extensions",
-                "io.delta.sql.DeltaSparkSessionExtension")
-        .config("spark.sql.catalog.spark_catalog",
-                "org.apache.spark.sql.delta.catalog.DeltaCatalog")
-        .config("spark.sql.adaptive.enabled",          "true")
-        .config("spark.sql.adaptive.skewJoin.enabled", "true")
-        .config("spark.sql.shuffle.partitions",        "8")
+        .config("spark.hadoop.fs.s3a.fast.upload.buffer",     SPARK_S3A_FAST_UPLOAD_BUFFER)
+        .config("spark.hadoop.fs.s3a.multipart.size",         SPARK_S3A_MULTIPART_SIZE)
+        .config("spark.hadoop.fs.s3a.multipart.threshold",    SPARK_S3A_MULTIPART_THRESHOLD)
+        # Delta Lake
+        .config("spark.sql.extensions",          "io.delta.sql.DeltaSparkSessionExtension")
+        .config("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog")
+        # Performance
+        .config("spark.executor.cores",               SPARK_EXECUTOR_CORES)
+        .config("spark.executor.memory",              SPARK_EXECUTOR_MEMORY)
+        .config("spark.driver.memory",                SPARK_DRIVER_MEMORY)
+        .config("spark.sql.adaptive.enabled",         "true")
+        .config("spark.sql.adaptive.skewJoin.enabled","true")
+        .config("spark.sql.shuffle.partitions",       SPARK_SHUFFLE_PARTITIONS)
+        # Event logging
+        .config("spark.eventLog.enabled", SPARK_EVENT_LOG_ENABLED)
+        .config("spark.eventLog.dir",     SPARK_EVENT_LOG_DIR)
         .getOrCreate()
     )
     spark.sparkContext.setLogLevel("WARN")
@@ -168,7 +178,7 @@ def run_with_spark_submit(file_path: str):
         cmd = [
             "spark-submit",
             "--master", spark_master,
-            "--packages", "io.delta:delta-spark_2.12:3.3.0,org.apache.hadoop:hadoop-aws:3.3.4,com.amazonaws:aws-java-sdk-bundle:1.12.262",
+            "--packages", SPARK_PACKAGES,
             file_path
         ]
         

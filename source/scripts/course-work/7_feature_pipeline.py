@@ -215,14 +215,10 @@ def main(skip_full_materialize: bool = False) -> None:
 
     stop_event = threading.Event()
 
-    # Register signal handlers so Ctrl-C and SIGTERM both trigger a clean shutdown,
-    # even if the main thread is blocked inside a long Trino/Redis call.
-    def _shutdown(signum, frame):
-        logger.info(f"Signal {signum} received — shutting down.")
-        stop_event.set()
-
-    signal.signal(signal.SIGINT,  _shutdown)
-    signal.signal(signal.SIGTERM, _shutdown)
+    # SIGTERM (docker stop / kill) → same clean shutdown as Ctrl-C
+    def _on_sigterm(signum, frame):
+        raise KeyboardInterrupt
+    signal.signal(signal.SIGTERM, _on_sigterm)
 
     # 1. One-time initialisation
     feast_apply()
@@ -244,21 +240,31 @@ def main(skip_full_materialize: bool = False) -> None:
 
     # 3. Periodic incremental materialize loop
     logger.info(f"Entering refresh loop (every {REFRESH_INTERVAL_S}s). Ctrl-C to stop.")
-    while not stop_event.is_set():
-        cycle_start = time.time()
-        try:
-            feast_materialize_incremental(store)
-        except Exception as e:
-            logger.exception(f"Materialization error: {e}")
+    try:
+        while True:
+            cycle_start = time.time()
+            try:
+                feast_materialize_incremental(store)
+            except Exception as e:
+                logger.exception(f"Materialization error: {e}")
 
-        elapsed = time.time() - cycle_start
-        sleep_s = max(0, REFRESH_INTERVAL_S - elapsed)
-        logger.info(f"Cycle done in {elapsed:.1f}s. Next refresh in {sleep_s:.0f}s.")
-        # wait() wakes immediately when stop_event is set, unlike time.sleep()
-        stop_event.wait(timeout=sleep_s)
+            elapsed  = time.time() - cycle_start
+            sleep_s  = max(0, REFRESH_INTERVAL_S - elapsed)
+            logger.info(f"Cycle done in {elapsed:.1f}s. Next refresh in {sleep_s:.0f}s.")
 
-    push_thread.join(timeout=5)
-    logger.info("Feature pipeline stopped.")
+            # Sleep in 1-second chunks — time.sleep() raises KeyboardInterrupt immediately
+            # on Ctrl-C. A single long sleep() or Event.wait() is silently retried by
+            # CPython (PEP 475) when the signal handler doesn't raise an exception.
+            deadline = time.monotonic() + sleep_s
+            while time.monotonic() < deadline:
+                time.sleep(min(1.0, deadline - time.monotonic()))
+
+    except KeyboardInterrupt:
+        logger.info("Shutdown requested — stopping cleanly.")
+    finally:
+        stop_event.set()
+        push_thread.join(timeout=5)
+        logger.info("Feature pipeline stopped.")
 
 
 if __name__ == "__main__":

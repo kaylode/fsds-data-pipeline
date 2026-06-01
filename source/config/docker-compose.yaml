@@ -179,7 +179,6 @@ services:
       PYSPARK_PYTHON: /usr/local/bin/python3.12
     volumes:
       - ../../.tmp/spark-logs:/opt/spark/logs
-      - ./conf/spark/spark-defaults.conf:/opt/spark/conf/spark-defaults.conf:ro
     depends_on:
       - minio
 
@@ -208,7 +207,6 @@ services:
       PYSPARK_PYTHON: /usr/local/bin/python3.12
     volumes:
       - ../../.tmp/spark-logs:/opt/spark/logs
-      - ./conf/spark/spark-defaults.conf:/opt/spark/conf/spark-defaults.conf:ro
     depends_on:
       - spark-master
 
