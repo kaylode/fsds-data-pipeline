@@ -1,19 +1,22 @@
 #!/bin/bash
 # Load env
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-project_root="$(cd "$script_dir/../.." && pwd)"
-if [ -f "$project_root/.env" ]; then
+export PROJECT_ROOT="$(cd "$script_dir/../.." && pwd)"
+if [ -f "$PROJECT_ROOT/.env" ]; then
     set -a
-    source "$project_root/.env"
+    source "$PROJECT_ROOT/.env"
     set +a
 fi
+
+# Ensure user bin directories are in PATH for rootless podman
+export PATH="$HOME/bin:$HOME/.local/bin:$PATH"
 
 # Define defaults
 POSTGRES_USER=${POSTGRES_USER:-postgres}
 POSTGRES_DB=${POSTGRES_DB:-postgres}
 
 # Set XDG_RUNTIME_DIR to the workspace-specific run directory
-export XDG_RUNTIME_DIR="$project_root/../.tmp/run"
+export XDG_RUNTIME_DIR="$PROJECT_ROOT/../.tmp/run"
 
 # Function to run psql inside the postgres container
 run_sql() {

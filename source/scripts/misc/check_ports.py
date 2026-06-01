@@ -81,6 +81,30 @@ def main():
         
         print(f" {icon}  {BOLD}{key_padded}{RESET} (Port {port:5}): {status}")
 
+    print("\n" + "-" * 42)
+    print(f"{CYAN}{BOLD}💡 Service UI Directory:{RESET}")
+    pgweb_port      = ports_to_check.get("PGWEB_PORT",              8085)
+    spark_master_ui = ports_to_check.get("SPARK_WEBUI_PORT",        8089)
+    spark_worker_ui = ports_to_check.get("SPARK_WORKER_WEBUI_PORT", 8091)
+    minio_console   = ports_to_check.get("MINIO_CONSOLE_PORT",      9001)
+    trino_ui        = ports_to_check.get("TRINO_PORT",               8090)
+    redpanda_ui     = ports_to_check.get("REDPANDA_CONSOLE_PORT",   8086)
+    flink_ui        = ports_to_check.get("FLINK_REST_PORT",          8088)
+    flink_jm        = ports_to_check.get("FLINK_JM_PORT",            6123)
+    airflow_ui      = ports_to_check.get("AIRFLOW_WEBSERVER_PORT",  8082)
+
+    print(f"  - {BOLD}MinIO Console{RESET}:     http://localhost:{minio_console} (minioadmin/minioadmin)")
+    print(f"  - {BOLD}Trino Web UI{RESET}:      http://localhost:{trino_ui}")
+    print(f"  - {BOLD}Spark Master UI{RESET}:   http://localhost:{spark_master_ui}")
+    print(f"  - {BOLD}Spark Worker UI{RESET}:   http://localhost:{spark_worker_ui}")
+    print(f"  - {BOLD}Flink Dashboard{RESET}:   http://localhost:{flink_ui}")
+    print(f"  - {BOLD}Flink JobManager RPC{RESET}: localhost:{flink_jm}")
+    print(f"  - {BOLD}Redpanda Console{RESET}:  http://localhost:{redpanda_ui}")
+    print(f"  - {BOLD}pgweb UI{RESET}:          http://localhost:{pgweb_port}")
+    print(f"  - {BOLD}DataHub Frontend{RESET}:  http://localhost:9002 (datahub/datahub)")
+    if "AIRFLOW_WEBSERVER_PORT" in ports_to_check:
+        print(f"  - {BOLD}Airflow Webserver{RESET}: http://localhost:{airflow_ui}")
+
     print("\n" + "=" * 42)
     if occupied_count > 0:
         print(f"\n{RED}{BOLD}❌ Status: FAILED{RESET}")
@@ -90,6 +114,7 @@ def main():
         print(f"\n{GREEN}{BOLD}✅ Status: SUCCESS{RESET}")
         print(f"{GREEN}All configured ports are free and ready for use!{RESET}")
         sys.exit(0)
+
 
 if __name__ == "__main__":
     main()

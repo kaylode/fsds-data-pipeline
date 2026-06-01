@@ -29,12 +29,27 @@ SILVER_TABLES = [
 ]
 
 GOLD_TABLES = [
+    # Core dimensions
     "dim_patient",
     "dim_ward",
     "dim_event_type",
+    # Specialised event-type dimensions
+    "dim_vital",
+    "dim_lab",
+    "dim_medication",
+    "dim_diagnosis",
+    # Facts & OBT
     "fact_visit",
     "fact_clinical_event",
     "obt_clinical_events",
+    # Pre-aggregated feature tables (Feast offline store)
+    "feat_patient_vitals_6m",
+    "feat_patient_labs_6m",
+    "feat_patient_icd_6m",
+    "feat_patient_medication_6m",
+    "feat_patient_demographics",
+    # Training labels
+    "gold_visit_labels",
 ]
 
 
@@ -275,11 +290,15 @@ def query_gold_tables(cursor) -> bool:
     # 2. Key null check
     print("\n  ── Integrity Check (No Null Surrogate Keys) ─────────────────")
     key_checks = [
-        ("dim_patient", "patient_key"),
-        ("dim_ward", "ward_key"),
-        ("dim_event_type", "event_type_key"),
-        ("fact_visit", "patient_key"),
-        ("fact_clinical_event", "event_type_key"),
+        ("dim_patient",        "patient_key"),
+        ("dim_ward",           "ward_key"),
+        ("dim_event_type",     "event_type_key"),
+        ("dim_vital",          "event_type_key"),
+        ("dim_lab",            "event_type_key"),
+        ("dim_medication",     "event_type_key"),
+        ("dim_diagnosis",      "event_type_key"),
+        ("fact_visit",         "patient_key"),
+        ("fact_clinical_event","event_type_key"),
     ]
     all_keys_ok = True
     for table, key_col in key_checks:

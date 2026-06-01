@@ -1,17 +1,16 @@
 #!/usr/bin/env bash
 
-# Get project directories
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PROJECT_ROOT="$( cd "$SCRIPT_DIR/../.." && pwd )"
-if [ -f "$PROJECT_ROOT/.env" ]; then
-    set -a
-    source "$PROJECT_ROOT/.env"
-    set +a
-fi
+# .tmp is one level up from source/ — matches ../../.tmp/ in docker-compose volume paths
+TMP_DIR="$( cd "$PROJECT_ROOT/.." && pwd )/.tmp"
 
-# Go to project root
-cd "$PROJECT_ROOT"
-export XDG_RUNTIME_DIR="$PROJECT_ROOT/../.tmp/run"
+export PATH="$HOME/bin:$HOME/.local/bin:$PATH"
+# Mirror the rootless Podman env from run_podman.sh so podman commands work
+export PODMAN="${PODMAN:-$HOME/bin/podman}"
+export CONTAINERS_CONF="$TMP_DIR/config/containers/containers.conf"
+export CONTAINERS_STORAGE_CONF="$TMP_DIR/config/containers/storage.conf"
+export XDG_RUNTIME_DIR="$TMP_DIR/run"
 
 FORCE=false
 if [ "$1" == "-f" ]; then
@@ -19,7 +18,11 @@ if [ "$1" == "-f" ]; then
 fi
 
 if [ "$FORCE" = false ]; then
-    echo "⚠️  Warning: This will delete the entire .tmp/ directory containing Podman's data, caches, and configuration."
+    echo "⚠️  Warning: This will:"
+    echo "     • Stop all running containers"
+    echo "     • Wipe MinIO (Delta Lake), PostgreSQL, Redis, and Kafka data"
+    echo "     • Reset Podman storage"
+    echo "     • flink-lib/ (connector JARs) will be preserved"
     read -p "Are you sure you want to proceed? (y/N) " -n 1 -r
     echo
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
@@ -28,21 +31,42 @@ if [ "$FORCE" = false ]; then
     fi
 fi
 
-# Ensure user bin directories are in PATH
-export PATH="$HOME/bin:$HOME/.local/bin:$PATH"
+# 1. Stop and remove each known container by name (more reliable than compose down)
+CONTAINERS=(
+    flink-taskmanager flink-jobmanager
+    spark-worker spark-master
+    trino hive-metastore
+    minio redis postgres kafka
+)
+echo "🛑 Stopping containers..."
+for c in "${CONTAINERS[@]}"; do
+    podman stop "$c" 2>/dev/null && echo "   stopped $c" || true
+    podman rm   "$c" 2>/dev/null || true
+done
 
-# Reset Podman storage if configured to avoid file lock issues
-if command -v podman &> /dev/null && [ -f .env ]; then
-    echo "🧹 Resetting Podman system storage for local redirects..."
-    pgrep -u "$USER" -f podman
-    pkill -9 -u "$USER" -f podman
-    set -a && source .env && set +a
-    podman system reset -f &>/dev/null
-fi
+# 2. Kill any stray podman processes
+pkill -u "$USER" -f podman 2>/dev/null || true
+sleep 1
+# Do not run podman system reset -f to preserve pulled images in the local registry
 
-# echo "🧹 Deleting $PROJECT_ROOT/.tmp..."
-# rm -rf "$PROJECT_ROOT/.tmp"
 
-# Storage is now fully contained in the workspace .tmp folder
+# 3. Wipe data volumes (preserve flink-lib — user-downloaded JARs)
+DATA_DIRS=(
+    minio-data
+    postgres-data
+    metastore-db-data
+    redis-data
+    kafka-data
+    spark-logs
+    flink-logs
+)
+echo "🗑️  Wiping data in $TMP_DIR ..."
+for dir in "${DATA_DIRS[@]}"; do
+    target="$TMP_DIR/$dir"
+    if [ -d "$target" ]; then
+        rm -rf "$target"
+        echo "   removed $dir/"
+    fi
+done
 
-echo "✅ Cleanup completed successfully!"
+echo "✅ Clean complete. Run 'make up' then re-run the pipeline."

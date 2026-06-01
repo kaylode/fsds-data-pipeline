@@ -46,6 +46,10 @@ GOLD_TABLES = [
     "dim_patient",
     "dim_ward",
     "dim_event_type",
+    "dim_vital",
+    "dim_lab",
+    "dim_medication",
+    "dim_diagnosis",
     "fact_visit",
     "fact_clinical_event",
     "obt_clinical_events",
@@ -139,6 +143,59 @@ def transform_dim_event_type(spark: SparkSession) -> int:
     )
     
     df_dim.write.format("delta").mode("overwrite").save(f"{GOLD_BASE}/dim_event_type")
+    return df_dim.count()
+
+
+def _build_event_type_dim(spark: SparkSession, event_type: str) -> "DataFrame":
+    """Filter stg_event_metadata to a single event_type and add surrogate key."""
+    df_stg = spark.read.format("delta").load(f"{SILVER_BASE}/stg_event_metadata")
+    return (
+        df_stg
+        .filter(F.col("event_type") == event_type)
+        .withColumn("event_type_key", F.sha2(F.col("event_type_id"), 256))
+        .select(
+            "event_type_key",
+            "event_type_id",
+            "event_name",
+            "event_description",
+            "unit_of_measurement",
+        )
+    )
+
+
+def transform_dim_vital(spark: SparkSession) -> int:
+    logger.info("Building dim_vital...")
+    df_dim = _build_event_type_dim(spark, "vital")
+    df_dim.write.format("delta").mode("overwrite").save(f"{GOLD_BASE}/dim_vital")
+    return df_dim.count()
+
+
+def transform_dim_lab(spark: SparkSession) -> int:
+    logger.info("Building dim_lab...")
+    df_dim = _build_event_type_dim(spark, "lab")
+    df_dim.write.format("delta").mode("overwrite").save(f"{GOLD_BASE}/dim_lab")
+    return df_dim.count()
+
+
+def transform_dim_medication(spark: SparkSession) -> int:
+    logger.info("Building dim_medication...")
+    df_dim = (
+        _build_event_type_dim(spark, "medication")
+        # Drop unit_of_measurement — not meaningful for medications
+        .drop("unit_of_measurement")
+    )
+    df_dim.write.format("delta").mode("overwrite").save(f"{GOLD_BASE}/dim_medication")
+    return df_dim.count()
+
+
+def transform_dim_diagnosis(spark: SparkSession) -> int:
+    logger.info("Building dim_diagnosis...")
+    df_dim = (
+        _build_event_type_dim(spark, "diagnosis")
+        # Drop unit_of_measurement — not meaningful for diagnoses
+        .drop("unit_of_measurement")
+    )
+    df_dim.write.format("delta").mode("overwrite").save(f"{GOLD_BASE}/dim_diagnosis")
     return df_dim.count()
 
 # ── Fact Transformers ──────────────────────────────────────────────────────────
@@ -313,6 +370,10 @@ def main():
         row_counts["dim_patient"]          = transform_dim_patient(spark)
         row_counts["dim_ward"]             = transform_dim_ward(spark)
         row_counts["dim_event_type"]       = transform_dim_event_type(spark)
+        row_counts["dim_vital"]            = transform_dim_vital(spark)
+        row_counts["dim_lab"]             = transform_dim_lab(spark)
+        row_counts["dim_medication"]       = transform_dim_medication(spark)
+        row_counts["dim_diagnosis"]        = transform_dim_diagnosis(spark)
         row_counts["fact_visit"]           = transform_fact_visit(spark)
         row_counts["fact_clinical_event"]  = transform_fact_clinical_event(spark)
         row_counts["obt_clinical_events"]  = transform_obt(spark)

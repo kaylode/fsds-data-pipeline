@@ -69,60 +69,37 @@ def ingest_to_minio(paths):
         "allow_http": "true",
     }
     
+    write_opts = dict(storage_options=storage_options, mode="overwrite", schema_mode="overwrite")
+
     # 1. Patients
     logger.info("Writing raw_patients table to S3/Delta...")
     df_patients = pd.read_parquet(paths["patients"])
     df_patients["bronze_ingest_ts"] = pd.Timestamp.now(tz="UTC")
-    write_deltalake(
-        f"s3://{BUCKET}/topics/raw_patients",
-        df_patients,
-        storage_options=storage_options,
-        mode="overwrite"
-    )
-    
+    write_deltalake(f"s3://{BUCKET}/topics/raw_patients", df_patients, **write_opts)
+
     # 2. Wards
     logger.info("Writing raw_wards table to S3/Delta...")
     df_wards = pd.read_parquet(paths["wards"])
     df_wards["bronze_ingest_ts"] = pd.Timestamp.now(tz="UTC")
-    write_deltalake(
-        f"s3://{BUCKET}/topics/raw_wards",
-        df_wards,
-        storage_options=storage_options,
-        mode="overwrite"
-    )
-    
+    write_deltalake(f"s3://{BUCKET}/topics/raw_wards", df_wards, **write_opts)
+
     # 3. Event Metadata
     logger.info("Writing raw_event_metadata table to S3/Delta...")
     df_meta = pd.read_parquet(paths["event_metadata"])
     df_meta["bronze_ingest_ts"] = pd.Timestamp.now(tz="UTC")
-    write_deltalake(
-        f"s3://{BUCKET}/topics/raw_event_metadata",
-        df_meta,
-        storage_options=storage_options,
-        mode="overwrite"
-    )
-    
+    write_deltalake(f"s3://{BUCKET}/topics/raw_event_metadata", df_meta, **write_opts)
+
     # 4. Visits
     logger.info("Writing raw_visits table to S3/Delta...")
     df_visits = pd.read_parquet(paths["visits"])
     df_visits["bronze_ingest_ts"] = pd.Timestamp.now(tz="UTC")
-    write_deltalake(
-        f"s3://{BUCKET}/topics/raw_visits",
-        df_visits,
-        storage_options=storage_options,
-        mode="overwrite"
-    )
+    write_deltalake(f"s3://{BUCKET}/topics/raw_visits", df_visits, **write_opts)
 
     # 5. Events
     logger.info("Writing raw_events table to S3/Delta...")
     df_events = pd.read_parquet(paths["events"])
     df_events["bronze_ingest_ts"] = pd.Timestamp.now(tz="UTC")
-    write_deltalake(
-        f"s3://{BUCKET}/topics/raw_events",
-        df_events,
-        storage_options=storage_options,
-        mode="overwrite"
-    )
+    write_deltalake(f"s3://{BUCKET}/topics/raw_events", df_events, **write_opts)
     
     logger.info("Successfully wrote all historical EHR Delta tables to MinIO.")
 
