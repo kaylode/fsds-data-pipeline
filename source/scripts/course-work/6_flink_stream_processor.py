@@ -263,11 +263,13 @@ def build_execution_env(local: bool) -> StreamExecutionEnvironment:
     else:
         rest_port = int(os.getenv("FLINK_REST_PORT", "8088"))
         logger.info(f"Connecting to remote Flink cluster at localhost:{rest_port} with JAR: {kafka_jar}")
-        # Target the remote cluster without trying to spin up a local Web UI on port 8088
         config.set_string("execution.target", "remote")
         config.set_string("jobmanager.rpc.address", "127.0.0.1")
         config.set_string("rest.address", "127.0.0.1")
         config.set_string("rest.port", str(rest_port))
+        # Bind the local PyFlink gateway REST server to any free port so it
+        # doesn't collide with the cluster's JobManager on the same port
+        config.set_string("rest.bind-port", "0")
 
     env = StreamExecutionEnvironment.get_execution_environment(config)
     env.set_parallelism(1)

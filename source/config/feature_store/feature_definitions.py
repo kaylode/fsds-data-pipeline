@@ -57,6 +57,12 @@ _demographics_source = TrinoSource(
     query="(SELECT * FROM delta.gold.feat_patient_demographics)",
 )
 
+_labels_source = TrinoSource(
+    name="gold_visit_labels",
+    timestamp_field="feature_timestamp",
+    query="(SELECT * FROM delta.gold.gold_visit_labels)",
+)
+
 # ── Streaming Source (vitals — real-time push from 6_stream_to_online_store.py)
 # Schema matches the DataFrame pushed via store.push() in the stream consumer.
 patient_vitals_stream_source = PushSource(
@@ -124,7 +130,7 @@ patient_medication_fv = FeatureView(
 patient_demographics_fv = FeatureView(
     name="patient_demographics",
     entities=[patient],
-    ttl=timedelta(days=36500),  # effectively permanent — demographics rarely change
+    ttl=timedelta(days=3650),  # effectively permanent — demographics rarely change
     schema=[
         Field(name="gender",      dtype=String),
         Field(name="ethnic",      dtype=String),
@@ -136,11 +142,27 @@ patient_demographics_fv = FeatureView(
     source=_demographics_source,
 )
 
-# ── Feature Service ────────────────────────────────────────────────────────────
-# Covers both use cases:
-#   Training  → store.get_historical_features(entity_df, features=patient_ml_features_v1)
-#   Prediction → store.get_online_features(entity_rows, features=patient_ml_features_v1)
+patient_labels_fv = FeatureView(
+    name="patient_labels",
+    entities=[patient],
+    ttl=timedelta(days=3650),
+    schema=[
+        Field(name="visit_id",                dtype=String),
+        Field(name="admission_timestamp",     dtype=String),
+        Field(name="discharge_timestamp",     dtype=String),
+        Field(name="severity_level",          dtype=String),
+        Field(name="is_readmitted_7d",        dtype=Int64),
+        Field(name="has_inpatient_mortality", dtype=Int64),
+        Field(name="has_30day_mortality",     dtype=Int64),
+    ],
+    online=False,   # labels are not needed in real-time serving
+    source=_labels_source,
+)
 
+# ── Feature Services ───────────────────────────────────────────────────────────
+
+# Online serving — features only, no labels
+#   store.get_online_features(entity_rows, features=patient_ml_features_v1)
 patient_ml_features_v1 = FeatureService(
     name="patient_ml_features_v1",
     features=[
@@ -149,5 +171,19 @@ patient_ml_features_v1 = FeatureService(
         patient_icd_fv,
         patient_medication_fv,
         patient_demographics_fv,
+    ],
+)
+
+# Training — features + labels, offline only
+#   store.get_historical_features(entity_df, features=patient_training_v1)
+patient_training_v1 = FeatureService(
+    name="patient_training_v1",
+    features=[
+        patient_vitals_fv,
+        patient_labs_fv,
+        patient_icd_fv,
+        patient_medication_fv,
+        patient_demographics_fv,
+        patient_labels_fv,
     ],
 )

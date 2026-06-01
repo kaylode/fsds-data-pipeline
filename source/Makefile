@@ -104,24 +104,15 @@ query-lakehouse:
 datahub-ingest:
 	@bash scripts/misc/datahub_ingest.sh
 
-# Feast Feature Store
-feast-setup:
-	@echo "✨  Setting up Feast Feature Store (apply, materialize, testview)..."
-	@uv run scripts/course-work/5_manage_feature_store.py
-
-feast-stream:
-	@echo "📡  Starting Feast stream consumer (reads from patient-features-24h topic)..."
-	@uv run scripts/course-work/6_stream_to_online_store.py
-
 # Start unified Flink job: archives raw stream to Bronze + computes 24h rolling features
 flink-stream:
 	@echo "⚡  Starting unified Flink stream processor..."
 	@uv run scripts/course-work/6_flink_stream_processor.py
 
-# Start 15-minute prediction feature merge loop (writes to prediction_features in PostgreSQL)
-merge-features:
-	@echo "🔀  Starting 15-minute feature merge loop..."
-	@uv run scripts/course-work/7_merge_features.py
+# Unified feature pipeline: apply + materialize + stream push + 60s merge loop
+feature-pipeline:
+	@echo "🚀  Starting unified feature pipeline (Ctrl-C to stop)..."
+	@uv run scripts/course-work/7_feature_pipeline.py
 
 # Test online feature retrieval from the Feast online store
 query-featurestore:

@@ -424,6 +424,7 @@ def main():
     logger.info("=" * 60)
 
     spark = build_spark_session("EHR-Feature-Engineering")
+    spark.sparkContext.addPyFile(os.path.join(script_dir, "utils.py"))
     row_counts = {}
 
     try:
