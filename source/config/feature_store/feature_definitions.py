@@ -66,27 +66,19 @@ patient_vitals_stream_source = PushSource(
 
 # ── Feature Views ─────────────────────────────────────────────────────────────
 
+_vitals_names = ["heart_rate", "systolic_bp", "diastolic_bp", "temperature"]
+_labs_names = ["glucose", "creatinine", "wbc", "hemoglobin"]
+_stats = ["mean", "min", "max", "std"]
+_meds_names = ["lisinopril", "metformin", "amoxicillin", "atorvastatin"]
+
 patient_vitals_fv = FeatureView(
     name="patient_vitals",
     entities=[patient],
     ttl=timedelta(days=365),
     schema=[
-        Field(name="heart_rate_mean",   dtype=Float64),
-        Field(name="heart_rate_min",    dtype=Float64),
-        Field(name="heart_rate_max",    dtype=Float64),
-        Field(name="heart_rate_std",    dtype=Float64),
-        Field(name="systolic_bp_mean",  dtype=Float64),
-        Field(name="systolic_bp_min",   dtype=Float64),
-        Field(name="systolic_bp_max",   dtype=Float64),
-        Field(name="systolic_bp_std",   dtype=Float64),
-        Field(name="diastolic_bp_mean", dtype=Float64),
-        Field(name="diastolic_bp_min",  dtype=Float64),
-        Field(name="diastolic_bp_max",  dtype=Float64),
-        Field(name="diastolic_bp_std",  dtype=Float64),
-        Field(name="temperature_mean",  dtype=Float64),
-        Field(name="temperature_min",   dtype=Float64),
-        Field(name="temperature_max",   dtype=Float64),
-        Field(name="temperature_std",   dtype=Float64),
+        Field(name=f"{v}_{s}", dtype=Float64)
+        for v in _vitals_names
+        for s in _stats
     ],
     online=True,
     source=patient_vitals_stream_source,
@@ -97,22 +89,9 @@ patient_labs_fv = FeatureView(
     entities=[patient],
     ttl=timedelta(days=365),
     schema=[
-        Field(name="glucose_mean",    dtype=Float64),
-        Field(name="glucose_min",     dtype=Float64),
-        Field(name="glucose_max",     dtype=Float64),
-        Field(name="glucose_std",     dtype=Float64),
-        Field(name="creatinine_mean", dtype=Float64),
-        Field(name="creatinine_min",  dtype=Float64),
-        Field(name="creatinine_max",  dtype=Float64),
-        Field(name="creatinine_std",  dtype=Float64),
-        Field(name="wbc_mean",        dtype=Float64),
-        Field(name="wbc_min",         dtype=Float64),
-        Field(name="wbc_max",         dtype=Float64),
-        Field(name="wbc_std",         dtype=Float64),
-        Field(name="hemoglobin_mean", dtype=Float64),
-        Field(name="hemoglobin_min",  dtype=Float64),
-        Field(name="hemoglobin_max",  dtype=Float64),
-        Field(name="hemoglobin_std",  dtype=Float64),
+        Field(name=f"{l}_{s}", dtype=Float64)
+        for l in _labs_names
+        for s in _stats
     ],
     online=True,
     source=_labs_batch_source,
@@ -135,10 +114,8 @@ patient_medication_fv = FeatureView(
     entities=[patient],
     ttl=timedelta(days=365),
     schema=[
-        Field(name="lisinopril_count",   dtype=Int64),
-        Field(name="metformin_count",    dtype=Int64),
-        Field(name="amoxicillin_count",  dtype=Int64),
-        Field(name="atorvastatin_count", dtype=Int64),
+        Field(name=f"{m}_count", dtype=Int64)
+        for m in _meds_names
     ],
     online=True,
     source=_medication_batch_source,

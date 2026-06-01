@@ -25,12 +25,13 @@ import os
 import time
 from datetime import datetime
 
-import trino
 from dotenv import load_dotenv
 from loguru import logger
-from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
 from pyspark.sql.types import DateType
+
+from pyspark.sql import SparkSession
+from utils import build_spark_session, register_tables_in_trino, run_with_spark_submit
 
 # ── Environment ────────────────────────────────────────────────────────────────
 script_dir   = os.path.dirname(os.path.abspath(__file__))
@@ -49,7 +50,9 @@ TRINO_HOST        = os.getenv("TRINO_HOST", "localhost")
 TRINO_PORT        = int(os.getenv("TRINO_PORT", "8090"))
 TRINO_USER        = os.getenv("TRINO_USER", "trino")
 
-SPARK_MASTER      = os.getenv("SPARK_MASTER_URL", "spark://127.0.0.1:7077")
+# Prefer explicit SPARK_MASTER_URL; fall back to composing from SPARK_MASTER_PORT
+_spark_master_port = os.getenv("SPARK_MASTER_PORT", "7077")
+SPARK_MASTER       = os.getenv("SPARK_MASTER_URL", f"spark://127.0.0.1:{_spark_master_port}")
 
 # Silver table name mapping: bronze → silver
 TABLES = {
@@ -61,42 +64,7 @@ TABLES = {
 }
 
 
-# ── Spark Session ──────────────────────────────────────────────────────────────
-
-def build_spark_session() -> SparkSession:
-    """
-    Builds a SparkSession connected to the Spark Standalone cluster.
-    JARs and S3A config are loaded from spark-defaults.conf which is
-    mounted at /opt/spark/conf/spark-defaults.conf inside the containers.
-    On the host side, spark-submit picks up the --packages flag from the conf.
-    """
-    logger.info(f"Connecting to Spark cluster: {SPARK_MASTER}")
-    spark = (
-        SparkSession.builder
-        .master(SPARK_MASTER)
-        .appName("EHR-Silver-Transformation")
-        # S3A credentials (also set in spark-defaults.conf, but explicit here
-        # ensures the host-submitted driver can reach MinIO directly too)
-        .config("spark.hadoop.fs.s3a.endpoint",              f"http://{MINIO_HOST}:{MINIO_PORT}")
-        .config("spark.hadoop.fs.s3a.access.key",            MINIO_ACCESS_KEY)
-        .config("spark.hadoop.fs.s3a.secret.key",            MINIO_SECRET_KEY)
-        .config("spark.hadoop.fs.s3a.path.style.access",     "true")
-        .config("spark.hadoop.fs.s3a.impl",                  "org.apache.hadoop.fs.s3a.S3AFileSystem")
-        .config("spark.hadoop.fs.s3a.connection.ssl.enabled", "false")
-        # Delta Lake extension (Spark 4.x, Scala 2.13 artifacts)
-        .config("spark.sql.extensions",
-                "io.delta.sql.DeltaSparkSessionExtension")
-        .config("spark.sql.catalog.spark_catalog",
-                "org.apache.spark.sql.delta.catalog.DeltaCatalog")
-        # AQE — auto-handles the 85% ward skew in visits/events
-        .config("spark.sql.adaptive.enabled",          "true")
-        .config("spark.sql.adaptive.skewJoin.enabled", "true")
-        .config("spark.sql.shuffle.partitions",        "8")
-        .getOrCreate()
-    )
-    spark.sparkContext.setLogLevel("WARN")
-    logger.info(f"Spark version: {spark.version}")
-    return spark
+# ── Spark Session and Trino Registration imported from utils ────────────────────
 
 
 # ── Transformation Functions ───────────────────────────────────────────────────
@@ -307,48 +275,6 @@ def transform_events(spark: SparkSession) -> int:
     return after_count
 
 
-# ── Trino Registration ─────────────────────────────────────────────────────────
-
-def register_silver_in_trino():
-    """
-    Creates delta.silver schema and registers all stg_* Silver tables in Trino.
-    Follows the same pattern as 2a_ingest_to_bronze.py.
-    """
-    logger.info("Registering Silver tables in Trino under delta.silver ...")
-    conn = trino.dbapi.connect(
-        host=TRINO_HOST,
-        port=TRINO_PORT,
-        user=TRINO_USER,
-    )
-    cursor = conn.cursor()
-
-    # 1. Create schema
-    cursor.execute("""
-        CREATE SCHEMA IF NOT EXISTS delta.silver
-        WITH (location = 's3://lakehouse/')
-    """)
-    logger.info("  delta.silver schema ensured.")
-
-    # 2. Register each Silver table
-    silver_tables = list(TABLES.values())  # stg_patients, stg_wards, etc.
-
-    for table in silver_tables:
-        logger.info(f"  Registering delta.silver.{table} ...")
-        # Drop existing registration to allow clean re-registration on reruns
-        cursor.execute(f"DROP TABLE IF EXISTS delta.silver.{table}")
-        cursor.execute(f"""
-            CALL delta.system.register_table(
-                schema_name  => 'silver',
-                table_name   => '{table}',
-                table_location => 's3://lakehouse/topics/{table}/'
-            )
-        """)
-
-    cursor.close()
-    conn.close()
-    logger.info("  All Silver tables registered in Trino.")
-
-
 # ── Main ───────────────────────────────────────────────────────────────────────
 
 def main():
@@ -359,7 +285,7 @@ def main():
     logger.info(f"EHR SILVER TRANSFORMATION — run_id={run_id}")
     logger.info("=" * 60)
 
-    spark = build_spark_session()
+    spark = build_spark_session("EHR-Silver-Transformation")
     row_counts = {}
 
     try:
@@ -376,7 +302,7 @@ def main():
             logger.info(f"  {table:<25}: {count:>10,} rows")
 
         # Register all tables in Trino
-        register_silver_in_trino()
+        register_tables_in_trino("silver", list(TABLES.values()))
 
     finally:
         spark.stop()
@@ -388,56 +314,5 @@ def main():
 
 
 if __name__ == "__main__":
-    import sys
-    import subprocess
-
-    # When spark-submit runs, it sets env variables such as SPARK_ENV_LOADED or SPARK_HOME.
-    # We check these to know if we are inside a spark-submit wrapper process.
-    is_submitted = (
-        "spark-submit" in sys.argv[0] or 
-        os.environ.get("SPARK_ENV_LOADED") == "1" or
-        "SPARK_HOME" in os.environ
-    )
-    
-    if not is_submitted:
-        logger.info("Script was not started with spark-submit. Submitting job to cluster via subprocess...")
-        
-        # Load Spark master URL and default port configuration
-        spark_master = os.getenv("SPARK_MASTER_URL", "spark://127.0.0.1:7077")
-        
-        # Build the spark-submit command
-        cmd = [
-            "spark-submit",
-            "--master", spark_master,
-            "--packages", "io.delta:delta-spark_2.12:3.3.0,org.apache.hadoop:hadoop-aws:3.3.4,com.amazonaws:aws-java-sdk-bundle:1.12.262",
-            __file__
-        ]
-        
-        logger.info(f"Running command: {' '.join(cmd)}")
-        try:
-            # Run spark-submit and pipe stderr to stdout to stream execution progress in real-time
-            process = subprocess.Popen(
-                cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                text=True,
-                bufsize=1
-            )
-            
-            # Stream logs in real-time
-            for line in process.stdout:
-                print(line, end="")
-            
-            process.wait()
-            if process.returncode != 0:
-                raise subprocess.CalledProcessError(process.returncode, cmd)
-                
-            sys.exit(0)
-        except subprocess.CalledProcessError as e:
-            logger.error(f"Spark job submission failed with exit code: {e.returncode}")
-            sys.exit(e.returncode)
-        except Exception as e:
-            logger.error(f"Failed to execute spark-submit: {e}")
-            sys.exit(1)
-    else:
-        main()
+    run_with_spark_submit(__file__)
+    main()

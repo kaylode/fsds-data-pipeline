@@ -22,9 +22,9 @@ import time
 from datetime import datetime, timezone
 
 import pandas as pd
-import trino
 from dotenv import load_dotenv
 from loguru import logger
+from utils import get_trino_connection
 
 try:
     from feast import FeatureStore
@@ -51,8 +51,7 @@ os.environ["AWS_ENDPOINT_URL"]      = f"http://localhost:{os.getenv('MINIO_PORT'
 
 TRAIN_SPLIT_RATIO  = 0.80  # 80% train, 20% test
 
-def _trino_conn():
-    return trino.dbapi.connect(host=TRINO_HOST, port=TRINO_PORT, user=TRINO_USER)
+
 
 def _fetch_df(cursor, sql: str) -> pd.DataFrame:
     cursor.execute(sql)
@@ -65,7 +64,7 @@ def main() -> None:
     store = FeatureStore(repo_path=FEATURE_STORE_DIR)
 
     logger.info("Connecting to Trino to fetch labels...")
-    conn = _trino_conn()
+    conn = get_trino_connection()
     cursor = conn.cursor()
     
     # Read labels (one row per completed visit)
@@ -107,12 +106,9 @@ def main() -> None:
     merged_df = merged_df.drop(columns=[c for c in cols_to_drop if c in merged_df.columns])
 
     # Rename features to reflect their source
-    stream_features = [
-        "heart_rate_mean", "heart_rate_min", "heart_rate_max", "heart_rate_std",
-        "systolic_bp_mean", "systolic_bp_min", "systolic_bp_max", "systolic_bp_std",
-        "diastolic_bp_mean", "diastolic_bp_min", "diastolic_bp_max", "diastolic_bp_std",
-        "temperature_mean", "temperature_min", "temperature_max", "temperature_std"
-    ]
+    vitals_names = ["heart_rate", "systolic_bp", "diastolic_bp", "temperature"]
+    stats = ["mean", "min", "max", "std"]
+    stream_features = [f"{v}_{s}" for v in vitals_names for s in stats]
 
     rename_dict = {}
     for col in merged_df.columns:

@@ -64,68 +64,22 @@ _STORAGE_OPTIONS = {
     "allow_http":        "true",
 }
 
-_ICD10_CHAPTERS = [
-    ("I",    "A",  "B"),   ("II",   "C",  "D4"),  ("III",  "D5", "D8"),
-    ("IV",   "E",  "E"),   ("V",    "F",  "F"),   ("VI",   "G",  "G"),
-    ("VII",  "H0", "H5"),  ("VIII", "H6", "H9"),  ("IX",   "I",  "I"),
-    ("X",    "J",  "J"),   ("XI",   "K",  "K"),   ("XII",  "L",  "L"),
-    ("XIII", "M",  "M"),   ("XIV",  "N",  "N"),   ("XV",   "O",  "O"),
-    ("XVI",  "P",  "P"),   ("XVII", "Q",  "Q"),   ("XVIII","R",  "R"),
-    ("XIX",  "S",  "T"),   ("XX",   "V",  "Y"),   ("XXI",  "Z",  "Z"),
-    ("XXII", "U",  "U"),
-]
+from utils import ICD10_CHAPTERS as _ICD10_CHAPTERS
+from utils import to_col, build_icd_chapter_map, read_delta_table_as_pandas
 
 
 # ── Schema discovery from gold dim tables ──────────────────────────────────────
-def _to_col(event_name: str) -> str:
-    return event_name.lower().replace(" ", "_").replace("-", "_")
-
-
-def _icd_code_to_chapter(code: str) -> str | None:
-    if not isinstance(code, str) or not code:
-        return None
-    code = code.strip().upper().replace(".", "")
-    c0, c2 = code[0], code[:2] if len(code) >= 2 else code
-    for roman, lo, hi in _ICD10_CHAPTERS:
-        if lo == hi and len(lo) == 1:
-            if c0 == lo:
-                return roman
-        else:
-            if lo <= c2 <= hi or lo <= c0 <= hi:
-                return roman
-    return None
-
-
-def _read_dim(table_name: str) -> pd.DataFrame:
-    return (
-        DeltaTable(f"s3://lakehouse/topics/{table_name}", storage_options=_STORAGE_OPTIONS)
-        .to_pandas()
-    )
-
-
-def _build_icd_chapter_map(df_diag: pd.DataFrame) -> dict[str, list[str]]:
-    chapter_to_names: dict[str, list[str]] = defaultdict(list)
-    for _, row in df_diag.iterrows():
-        match = re.search(r'ICD-10\s+([A-Z][0-9A-Z.]+)', str(row.get("event_description", "")))
-        if not match:
-            continue
-        chapter = _icd_code_to_chapter(match.group(1))
-        if chapter:
-            chapter_to_names[chapter].append(row["event_name"])
-    return dict(chapter_to_names)
-
-
 def load_metrics_from_gold() -> dict:
     logger.info("Loading feature schema from gold dimension tables ...")
-    df_vital = _read_dim("dim_vital")
-    df_lab   = _read_dim("dim_lab")
-    df_med   = _read_dim("dim_medication")
-    df_diag  = _read_dim("dim_diagnosis")
+    df_vital = read_delta_table_as_pandas("dim_vital", _STORAGE_OPTIONS)
+    df_lab   = read_delta_table_as_pandas("dim_lab", _STORAGE_OPTIONS)
+    df_med   = read_delta_table_as_pandas("dim_medication", _STORAGE_OPTIONS)
+    df_diag  = read_delta_table_as_pandas("dim_diagnosis", _STORAGE_OPTIONS)
 
-    vital_metrics    = [(_to_col(r.event_name), r.event_name) for _, r in df_vital.iterrows()]
-    lab_metrics      = [(_to_col(r.event_name), r.event_name) for _, r in df_lab.iterrows()]
-    med_metrics      = [(_to_col(r.event_name), r.event_name) for _, r in df_med.iterrows()]
-    chapter_to_names = _build_icd_chapter_map(df_diag)
+    vital_metrics    = [(to_col(r.event_name), r.event_name) for _, r in df_vital.iterrows()]
+    lab_metrics      = [(to_col(r.event_name), r.event_name) for _, r in df_lab.iterrows()]
+    med_metrics      = [(to_col(r.event_name), r.event_name) for _, r in df_med.iterrows()]
+    chapter_to_names = build_icd_chapter_map(df_diag)
 
     return {
         "vital_metrics":    vital_metrics,

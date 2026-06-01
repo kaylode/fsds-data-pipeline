@@ -26,13 +26,14 @@ import os
 import time
 from datetime import datetime, timezone
 
-import trino
 from dotenv import load_dotenv
 from loguru import logger
 from pyspark.sql import SparkSession, Window
 from pyspark.sql import functions as F
 from pyspark.sql.functions import udf
 from pyspark.sql.types import StringType
+
+from utils import build_spark_session, load_event_metadata, ICD10_CHAPTERS, register_tables_in_trino, run_with_spark_submit
 
 # ── Environment ────────────────────────────────────────────────────────────────
 script_dir   = os.path.dirname(os.path.abspath(__file__))
@@ -49,7 +50,10 @@ GOLD_BASE        = f"s3a://{BUCKET}/topics"
 TRINO_HOST       = os.getenv("TRINO_HOST", "localhost")
 TRINO_PORT       = int(os.getenv("TRINO_PORT", "8090"))
 TRINO_USER       = os.getenv("TRINO_USER", "trino")
-SPARK_MASTER     = os.getenv("SPARK_MASTER_URL", "spark://127.0.0.1:7077")
+
+# Prefer explicit SPARK_MASTER_URL; fall back to composing from SPARK_MASTER_PORT
+_spark_master_port = os.getenv("SPARK_MASTER_PORT", "7077")
+SPARK_MASTER       = os.getenv("SPARK_MASTER_URL", f"spark://127.0.0.1:{_spark_master_port}")
 
 LOOKBACK_MONTHS  = 6
 
@@ -65,32 +69,11 @@ LABEL_TABLES = [
     "gold_visit_labels",
 ]
 
-# ── ICD-10 chapter boundaries ──────────────────────────────────────────────────
-# (roman, first_prefix, last_prefix) — mirrors the user-supplied chapter table
-ICD10_CHAPTERS = [
-    ("I",    "A",  "B"),
-    ("II",   "C",  "D4"),
-    ("III",  "D5", "D8"),
-    ("IV",   "E",  "E"),
-    ("V",    "F",  "F"),
-    ("VI",   "G",  "G"),
-    ("VII",  "H0", "H5"),
-    ("VIII", "H6", "H9"),
-    ("IX",   "I",  "I"),
-    ("X",    "J",  "J"),
-    ("XI",   "K",  "K"),
-    ("XII",  "L",  "L"),
-    ("XIII", "M",  "M"),
-    ("XIV",  "N",  "N"),
-    ("XV",   "O",  "O"),
-    ("XVI",  "P",  "P"),
-    ("XVII", "Q",  "Q"),
-    ("XVIII","R",  "R"),
-    ("XIX",  "S",  "T"),
-    ("XX",   "V",  "Y"),
-    ("XXI",  "Z",  "Z"),
-    ("XXII", "U",  "U"),
-]
+# ICD10_CHAPTERS is imported from utils
+
+def _snake(name: str) -> str:
+    """Convert an event_name to a safe column prefix, e.g. 'Heart Rate' -> 'heart_rate'."""
+    return name.lower().replace(" ", "_").replace("-", "_")
 
 
 @udf(returnType=StringType())
@@ -102,30 +85,7 @@ def extract_icd_chapter_udf(event_description: str):
     Self-contained so Spark can serialise it to workers.
     """
     import re
-    _CHAPTERS = [
-        ("I",    "A",  "B"),
-        ("II",   "C",  "D4"),
-        ("III",  "D5", "D8"),
-        ("IV",   "E",  "E"),
-        ("V",    "F",  "F"),
-        ("VI",   "G",  "G"),
-        ("VII",  "H0", "H5"),
-        ("VIII", "H6", "H9"),
-        ("IX",   "I",  "I"),
-        ("X",    "J",  "J"),
-        ("XI",   "K",  "K"),
-        ("XII",  "L",  "L"),
-        ("XIII", "M",  "M"),
-        ("XIV",  "N",  "N"),
-        ("XV",   "O",  "O"),
-        ("XVI",  "P",  "P"),
-        ("XVII", "Q",  "Q"),
-        ("XVIII","R",  "R"),
-        ("XIX",  "S",  "T"),
-        ("XX",   "V",  "Y"),
-        ("XXI",  "Z",  "Z"),
-        ("XXII", "U",  "U"),
-    ]
+    from utils import ICD10_CHAPTERS as _CHAPTERS
     if not event_description:
         return None
     match = re.search(r'ICD-10\s+([A-Z][0-9A-Z.]+)', event_description)
@@ -144,30 +104,7 @@ def extract_icd_chapter_udf(event_description: str):
     return None
 
 
-# ── Spark Session ──────────────────────────────────────────────────────────────
-
-def build_spark_session() -> SparkSession:
-    logger.info(f"Connecting to Spark cluster: {SPARK_MASTER}")
-    spark = (
-        SparkSession.builder
-        .master(SPARK_MASTER)
-        .appName("EHR-Feature-Engineering")
-        .config("spark.hadoop.fs.s3a.endpoint",               f"http://{MINIO_HOST}:{MINIO_PORT}")
-        .config("spark.hadoop.fs.s3a.access.key",             MINIO_ACCESS_KEY)
-        .config("spark.hadoop.fs.s3a.secret.key",             MINIO_SECRET_KEY)
-        .config("spark.hadoop.fs.s3a.path.style.access",      "true")
-        .config("spark.hadoop.fs.s3a.impl",                   "org.apache.hadoop.fs.s3a.S3AFileSystem")
-        .config("spark.hadoop.fs.s3a.connection.ssl.enabled", "false")
-        .config("spark.sql.extensions",                       "io.delta.sql.DeltaSparkSessionExtension")
-        .config("spark.sql.catalog.spark_catalog",            "org.apache.spark.sql.delta.catalog.DeltaCatalog")
-        .config("spark.sql.adaptive.enabled",                 "true")
-        .config("spark.sql.adaptive.skewJoin.enabled",        "true")
-        .config("spark.sql.shuffle.partitions",               "8")
-        .getOrCreate()
-    )
-    spark.sparkContext.setLogLevel("WARN")
-    logger.info(f"Spark version: {spark.version}")
-    return spark
+# build_spark_session is imported from utils
 
 
 def resolve_as_of_ts(spark: SparkSession) -> str:
@@ -206,27 +143,33 @@ def load_obt_window(spark: SparkSession, as_of_ts: str):
     return df
 
 
+# load_event_metadata is imported from utils
+
+
 # ── Feature Computations ───────────────────────────────────────────────────────
 
-def compute_vitals_features(df_obt, as_of_ts: str) -> int:
-    logger.info("Computing feat_patient_vitals_6m ...")
+def compute_vitals_features(df_obt, vital_names: list[str], as_of_ts: str) -> int:
+    """
+    For each vital name in vital_names (loaded from dim_event_type), computes
+    mean / min / max / std of num_value per patient over the lookback window.
+    Column names are derived automatically: 'Heart Rate' -> heart_rate_mean, etc.
+    """
+    logger.info(f"Computing feat_patient_vitals_6m for {len(vital_names)} vitals: {vital_names}")
     df = df_obt.filter(F.col("event_type") == "vital")
 
-    def _agg_vital(name: str, col_prefix: str):
-        return [
-            F.avg(F.when(F.col("event_name") == name, F.col("num_value"))).alias(f"{col_prefix}_mean"),
-            F.min(F.when(F.col("event_name") == name, F.col("num_value"))).alias(f"{col_prefix}_min"),
-            F.max(F.when(F.col("event_name") == name, F.col("num_value"))).alias(f"{col_prefix}_max"),
-            F.stddev(F.when(F.col("event_name") == name, F.col("num_value"))).alias(f"{col_prefix}_std"),
+    agg_exprs = [
+        expr
+        for name in vital_names
+        for expr in [
+            F.avg  (F.when(F.col("event_name") == name, F.col("num_value"))).alias(f"{_snake(name)}_mean"),
+            F.min  (F.when(F.col("event_name") == name, F.col("num_value"))).alias(f"{_snake(name)}_min"),
+            F.max  (F.when(F.col("event_name") == name, F.col("num_value"))).alias(f"{_snake(name)}_max"),
+            F.stddev(F.when(F.col("event_name") == name, F.col("num_value"))).alias(f"{_snake(name)}_std"),
         ]
+    ]
 
     df_feat = (
-        df.groupBy("patient_id").agg(
-            *_agg_vital("Heart Rate",   "heart_rate"),
-            *_agg_vital("Systolic BP",  "systolic_bp"),
-            *_agg_vital("Diastolic BP", "diastolic_bp"),
-            *_agg_vital("Temperature",  "temperature"),
-        )
+        df.groupBy("patient_id").agg(*agg_exprs)
         .withColumn("feature_timestamp", F.lit(as_of_ts).cast("timestamp"))
     )
 
@@ -236,25 +179,27 @@ def compute_vitals_features(df_obt, as_of_ts: str) -> int:
     return count
 
 
-def compute_labs_features(df_obt, as_of_ts: str) -> int:
-    logger.info("Computing feat_patient_labs_6m ...")
+def compute_labs_features(df_obt, lab_names: list[str], as_of_ts: str) -> int:
+    """
+    For each lab name in lab_names (loaded from dim_event_type), computes
+    mean / min / max / std of num_value per patient over the lookback window.
+    """
+    logger.info(f"Computing feat_patient_labs_6m for {len(lab_names)} labs: {lab_names}")
     df = df_obt.filter(F.col("event_type") == "lab")
 
-    def _agg_lab(name: str, col_prefix: str):
-        return [
-            F.avg(F.when(F.col("event_name") == name, F.col("num_value"))).alias(f"{col_prefix}_mean"),
-            F.min(F.when(F.col("event_name") == name, F.col("num_value"))).alias(f"{col_prefix}_min"),
-            F.max(F.when(F.col("event_name") == name, F.col("num_value"))).alias(f"{col_prefix}_max"),
-            F.stddev(F.when(F.col("event_name") == name, F.col("num_value"))).alias(f"{col_prefix}_std"),
+    agg_exprs = [
+        expr
+        for name in lab_names
+        for expr in [
+            F.avg  (F.when(F.col("event_name") == name, F.col("num_value"))).alias(f"{_snake(name)}_mean"),
+            F.min  (F.when(F.col("event_name") == name, F.col("num_value"))).alias(f"{_snake(name)}_min"),
+            F.max  (F.when(F.col("event_name") == name, F.col("num_value"))).alias(f"{_snake(name)}_max"),
+            F.stddev(F.when(F.col("event_name") == name, F.col("num_value"))).alias(f"{_snake(name)}_std"),
         ]
+    ]
 
     df_feat = (
-        df.groupBy("patient_id").agg(
-            *_agg_lab("Glucose",    "glucose"),
-            *_agg_lab("Creatinine", "creatinine"),
-            *_agg_lab("WBC",        "wbc"),
-            *_agg_lab("Hemoglobin", "hemoglobin"),
-        )
+        df.groupBy("patient_id").agg(*agg_exprs)
         .withColumn("feature_timestamp", F.lit(as_of_ts).cast("timestamp"))
     )
 
@@ -303,17 +248,23 @@ def compute_icd_features(spark: SparkSession, df_obt, as_of_ts: str) -> int:
     return count
 
 
-def compute_medication_features(df_obt, as_of_ts: str) -> int:
-    logger.info("Computing feat_patient_medication_6m ...")
+def compute_medication_features(df_obt, medication_names: list[str], as_of_ts: str) -> int:
+    """
+    For each medication name in medication_names (loaded from dim_event_type),
+    counts the number of administrations per patient over the lookback window.
+    """
+    logger.info(f"Computing feat_patient_medication_6m for {len(medication_names)} medications: {medication_names}")
     df = df_obt.filter(F.col("event_type") == "medication")
 
+    agg_exprs = [
+        F.sum(F.when(F.col("event_name") == name, 1).otherwise(0))
+         .cast("long")
+         .alias(f"{_snake(name)}_count")
+        for name in medication_names
+    ]
+
     df_feat = (
-        df.groupBy("patient_id").agg(
-            F.sum(F.when(F.col("event_name") == "Lisinopril",   1).otherwise(0)).cast("long").alias("lisinopril_count"),
-            F.sum(F.when(F.col("event_name") == "Metformin",    1).otherwise(0)).cast("long").alias("metformin_count"),
-            F.sum(F.when(F.col("event_name") == "Amoxicillin",  1).otherwise(0)).cast("long").alias("amoxicillin_count"),
-            F.sum(F.when(F.col("event_name") == "Atorvastatin", 1).otherwise(0)).cast("long").alias("atorvastatin_count"),
-        )
+        df.groupBy("patient_id").agg(*agg_exprs)
         .withColumn("feature_timestamp", F.lit(as_of_ts).cast("timestamp"))
     )
 
@@ -461,50 +412,6 @@ def compute_visit_labels(spark: SparkSession, as_of_ts: str) -> int:
     return count
 
 
-# ── Trino Registration ─────────────────────────────────────────────────────────
-
-def register_feat_tables_in_trino():
-    logger.info("Registering feature tables in Trino under delta.gold ...")
-    conn = trino.dbapi.connect(host=TRINO_HOST, port=TRINO_PORT, user=TRINO_USER)
-    cursor = conn.cursor()
-
-    for table in FEAT_TABLES:
-        logger.info(f"  Registering delta.gold.{table} ...")
-        cursor.execute(f"DROP TABLE IF EXISTS delta.gold.{table}")
-        cursor.execute(f"""
-            CALL delta.system.register_table(
-                schema_name    => 'gold',
-                table_name     => '{table}',
-                table_location => 's3://lakehouse/topics/{table}/'
-            )
-        """)
-
-    cursor.close()
-    conn.close()
-    logger.info("  All feature tables registered in Trino.")
-
-
-def register_label_tables_in_trino():
-    logger.info("Registering label tables in Trino under delta.gold ...")
-    conn   = trino.dbapi.connect(host=TRINO_HOST, port=TRINO_PORT, user=TRINO_USER)
-    cursor = conn.cursor()
-
-    for table in LABEL_TABLES:
-        logger.info(f"  Registering delta.gold.{table} ...")
-        cursor.execute(f"DROP TABLE IF EXISTS delta.gold.{table}")
-        cursor.execute(f"""
-            CALL delta.system.register_table(
-                schema_name    => 'gold',
-                table_name     => '{table}',
-                table_location => 's3://lakehouse/topics/{table}/'
-            )
-        """)
-
-    cursor.close()
-    conn.close()
-    logger.info("  Label tables registered in Trino.")
-
-
 # ── Main ───────────────────────────────────────────────────────────────────────
 
 def main():
@@ -516,20 +423,28 @@ def main():
     logger.info(f"  lookback={LOOKBACK_MONTHS} months")
     logger.info("=" * 60)
 
-    spark = build_spark_session()
+    spark = build_spark_session("EHR-Feature-Engineering")
     row_counts = {}
 
     try:
         as_of_ts = resolve_as_of_ts(spark)
         logger.info(f"as_of_ts = {as_of_ts}")
 
+        # Load event names from dim_event_type (Gold) — single source of truth.
+        # Adding a new vital/lab/medication to the data pipeline automatically
+        # extends the feature set here without any code changes.
+        event_meta = load_event_metadata(spark)
+        vital_names      = event_meta.get("vital",      [])
+        lab_names        = event_meta.get("lab",        [])
+        medication_names = event_meta.get("medication", [])
+
         df_obt = load_obt_window(spark, as_of_ts)
         df_obt.cache()
 
-        row_counts["feat_patient_vitals_6m"]    = compute_vitals_features(df_obt, as_of_ts)
-        row_counts["feat_patient_labs_6m"]      = compute_labs_features(df_obt, as_of_ts)
+        row_counts["feat_patient_vitals_6m"]    = compute_vitals_features(df_obt, vital_names, as_of_ts)
+        row_counts["feat_patient_labs_6m"]      = compute_labs_features(df_obt, lab_names, as_of_ts)
         row_counts["feat_patient_icd_6m"]       = compute_icd_features(spark, df_obt, as_of_ts)
-        row_counts["feat_patient_medication_6m"]= compute_medication_features(df_obt, as_of_ts)
+        row_counts["feat_patient_medication_6m"]= compute_medication_features(df_obt, medication_names, as_of_ts)
         row_counts["feat_patient_demographics"] = compute_demographics_features(spark, as_of_ts)
         row_counts["gold_visit_labels"]         = compute_visit_labels(spark, as_of_ts)
 
@@ -538,8 +453,7 @@ def main():
         for table, count in row_counts.items():
             logger.info(f"  {table:<35}: {count:>10,} rows")
 
-        register_feat_tables_in_trino()
-        register_label_tables_in_trino()
+        register_tables_in_trino("gold", FEAT_TABLES + LABEL_TABLES)
 
     finally:
         spark.stop()
@@ -551,38 +465,5 @@ def main():
 
 
 if __name__ == "__main__":
-    import sys
-    import subprocess
-
-    is_submitted = (
-        "spark-submit" in sys.argv[0] or
-        os.environ.get("SPARK_ENV_LOADED") == "1" or
-        "SPARK_HOME" in os.environ
-    )
-
-    if not is_submitted:
-        logger.info("Not running under spark-submit — submitting to cluster ...")
-        spark_master = os.getenv("SPARK_MASTER_URL", "spark://127.0.0.1:7077")
-        cmd = [
-            "spark-submit",
-            "--master", spark_master,
-            "--packages", "io.delta:delta-spark_2.12:3.3.0,org.apache.hadoop:hadoop-aws:3.3.4,com.amazonaws:aws-java-sdk-bundle:1.12.262",
-            __file__
-        ]
-        logger.info(f"Running: {' '.join(cmd)}")
-        try:
-            process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
-            for line in process.stdout:
-                print(line, end="")
-            process.wait()
-            if process.returncode != 0:
-                raise subprocess.CalledProcessError(process.returncode, cmd)
-            sys.exit(0)
-        except subprocess.CalledProcessError as e:
-            logger.error(f"Spark job failed with exit code: {e.returncode}")
-            sys.exit(e.returncode)
-        except Exception as e:
-            logger.error(f"Failed to execute spark-submit: {e}")
-            sys.exit(1)
-    else:
-        main()
+    run_with_spark_submit(__file__)
+    main()

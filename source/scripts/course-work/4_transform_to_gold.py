@@ -17,11 +17,12 @@ import os
 import time
 from datetime import datetime
 
-import trino
 from dotenv import load_dotenv
 from loguru import logger
-from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
+
+from pyspark.sql import SparkSession
+from utils import build_spark_session, register_tables_in_trino, run_with_spark_submit
 
 # ── Environment ────────────────────────────────────────────────────────────────
 script_dir   = os.path.dirname(os.path.abspath(__file__))
@@ -40,7 +41,9 @@ TRINO_HOST        = os.getenv("TRINO_HOST", "localhost")
 TRINO_PORT        = int(os.getenv("TRINO_PORT", "8090"))
 TRINO_USER        = os.getenv("TRINO_USER", "trino")
 
-SPARK_MASTER      = os.getenv("SPARK_MASTER_URL", "spark://127.0.0.1:7077")
+# Prefer explicit SPARK_MASTER_URL; fall back to composing from SPARK_MASTER_PORT
+_spark_master_port = os.getenv("SPARK_MASTER_PORT", "7077")
+SPARK_MASTER       = os.getenv("SPARK_MASTER_URL", f"spark://127.0.0.1:{_spark_master_port}")
 
 GOLD_TABLES = [
     "dim_patient",
@@ -55,32 +58,7 @@ GOLD_TABLES = [
     "obt_clinical_events",
 ]
 
-# ── Spark Session ──────────────────────────────────────────────────────────────
-
-def build_spark_session() -> SparkSession:
-    logger.info(f"Connecting to Spark cluster: {SPARK_MASTER}")
-    spark = (
-        SparkSession.builder
-        .master(SPARK_MASTER)
-        .appName("EHR-Gold-Transformation")
-        .config("spark.hadoop.fs.s3a.endpoint",              f"http://{MINIO_HOST}:{MINIO_PORT}")
-        .config("spark.hadoop.fs.s3a.access.key",            MINIO_ACCESS_KEY)
-        .config("spark.hadoop.fs.s3a.secret.key",            MINIO_SECRET_KEY)
-        .config("spark.hadoop.fs.s3a.path.style.access",     "true")
-        .config("spark.hadoop.fs.s3a.impl",                  "org.apache.hadoop.fs.s3a.S3AFileSystem")
-        .config("spark.hadoop.fs.s3a.connection.ssl.enabled", "false")
-        .config("spark.sql.extensions",
-                "io.delta.sql.DeltaSparkSessionExtension")
-        .config("spark.sql.catalog.spark_catalog",
-                "org.apache.spark.sql.delta.catalog.DeltaCatalog")
-        .config("spark.sql.adaptive.enabled",          "true")
-        .config("spark.sql.adaptive.skewJoin.enabled", "true")
-        .config("spark.sql.shuffle.partitions",        "8")
-        .getOrCreate()
-    )
-    spark.sparkContext.setLogLevel("WARN")
-    logger.info(f"Spark version: {spark.version}")
-    return spark
+# ── Spark Session and Trino Registration imported from utils ────────────────────
 
 # ── Dimension Transformers ─────────────────────────────────────────────────────
 
@@ -318,40 +296,6 @@ def transform_obt(spark: SparkSession) -> int:
     )
     return df_obt.count()
 
-# ── Trino Registration ─────────────────────────────────────────────────────────
-
-def register_gold_in_trino():
-    logger.info("Registering Gold tables in Trino under delta.gold ...")
-    conn = trino.dbapi.connect(
-        host=TRINO_HOST,
-        port=TRINO_PORT,
-        user=TRINO_USER,
-    )
-    cursor = conn.cursor()
-
-    # 1. Create schema
-    cursor.execute("""
-        CREATE SCHEMA IF NOT EXISTS delta.gold
-        WITH (location = 's3://lakehouse/')
-    """)
-    logger.info("  delta.gold schema ensured.")
-
-    # 2. Register each Gold table
-    for table in GOLD_TABLES:
-        logger.info(f"  Registering delta.gold.{table} ...")
-        cursor.execute(f"DROP TABLE IF EXISTS delta.gold.{table}")
-        cursor.execute(f"""
-            CALL delta.system.register_table(
-                schema_name  => 'gold',
-                table_name   => '{table}',
-                table_location => 's3://lakehouse/topics/{table}/'
-            )
-        """)
-
-    cursor.close()
-    conn.close()
-    logger.info("  All Gold tables registered in Trino.")
-
 # ── Main ───────────────────────────────────────────────────────────────────────
 
 def main():
@@ -362,7 +306,7 @@ def main():
     logger.info(f"EHR GOLD TRANSFORMATION — run_id={run_id}")
     logger.info("=" * 60)
 
-    spark = build_spark_session()
+    spark = build_spark_session("EHR-Gold-Transformation")
     row_counts = {}
 
     try:
@@ -384,7 +328,7 @@ def main():
             logger.info(f"  {table:<25}: {count:>10,} rows")
 
         # Register all tables in Trino
-        register_gold_in_trino()
+        register_tables_in_trino("gold", GOLD_TABLES)
 
     finally:
         spark.stop()
@@ -396,46 +340,5 @@ def main():
 
 
 if __name__ == "__main__":
-    import sys
-    import subprocess
-
-    is_submitted = (
-        "spark-submit" in sys.argv[0] or 
-        os.environ.get("SPARK_ENV_LOADED") == "1" or
-        "SPARK_HOME" in os.environ
-    )
-    
-    if not is_submitted:
-        logger.info("Script was not started with spark-submit. Submitting job to cluster via subprocess...")
-        spark_master = os.getenv("SPARK_MASTER_URL", "spark://127.0.0.1:7077")
-        
-        cmd = [
-            "spark-submit",
-            "--master", spark_master,
-            "--packages", "io.delta:delta-spark_2.12:3.3.0,org.apache.hadoop:hadoop-aws:3.3.4,com.amazonaws:aws-java-sdk-bundle:1.12.262",
-            __file__
-        ]
-        
-        logger.info(f"Running command: {' '.join(cmd)}")
-        try:
-            process = subprocess.Popen(
-                cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                text=True,
-                bufsize=1
-            )
-            for line in process.stdout:
-                print(line, end="")
-            process.wait()
-            if process.returncode != 0:
-                raise subprocess.CalledProcessError(process.returncode, cmd)
-            sys.exit(0)
-        except subprocess.CalledProcessError as e:
-            logger.error(f"Spark job submission failed with exit code: {e.returncode}")
-            sys.exit(e.returncode)
-        except Exception as e:
-            logger.error(f"Failed to execute spark-submit: {e}")
-            sys.exit(1)
-    else:
-        main()
+    run_with_spark_submit(__file__)
+    main()

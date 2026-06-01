@@ -4,7 +4,6 @@ EHR Feature Store Management Script
 Consolidates Feast apply, materialization, and verification tasks in a single script.
 """
 
-import argparse
 import os
 import subprocess
 import sys
@@ -51,7 +50,7 @@ def run_materialize():
     
     logger.info(f"Materializing batch features from {start_date} to {end_date}...")
     store.materialize(start_date=start_date, end_date=end_date)
-    logger.info("Materialization complete. Gold batch tables loaded into PostgreSQL online store.")
+    logger.info("Materialization complete. Gold batch tables loaded into Redis online store.")
 
 
 def run_testview():
@@ -64,24 +63,10 @@ def run_testview():
 
 
 def main():
-    parser = argparse.ArgumentParser(description="EHR Feature Store Management Utility")
-    parser.add_argument("--apply", action="store_true", help="Run feast apply to configure infrastructure")
-    parser.add_argument("--materialize", action="store_true", help="Materialize batch data from offline to online store")
-    parser.add_argument("--testview", action="store_true", help="Test feature view schema")
-    
-    args = parser.parse_args()
-    
-    # If no argument is passed, display help
-    if not any(vars(args).values()):
-        parser.print_help()
-        sys.exit(0)
-        
-    if args.apply:
-        run_apply()
-    if args.materialize:
-        run_materialize()
-    if args.testview:
-        run_testview()
+    logger.info("Starting Feast Feature Store initialization and materialization...")
+    run_apply()
+    run_materialize()
+    run_testview()
 
 
 if __name__ == "__main__":

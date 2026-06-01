@@ -60,10 +60,8 @@ os.environ["AWS_ACCESS_KEY_ID"]     = MINIO_ACCESS_KEY
 os.environ["AWS_SECRET_ACCESS_KEY"] = MINIO_SECRET_KEY
 os.environ["AWS_ENDPOINT_URL"]      = f"http://localhost:{MINIO_PORT}"
 
-_ICD10_CHAPTERS = [
-    "I","II","III","IV","V","VI","VII","VIII","IX","X","XI",
-    "XII","XIII","XIV","XV","XVI","XVII","XVIII","XIX","XX","XXI","XXII",
-]
+from utils import ICD10_CHAPTERS, to_col, read_delta_table_as_pandas
+_ICD10_CHAPTERS = [roman for roman, _, _ in ICD10_CHAPTERS]
 
 _STORAGE_OPTIONS = {
     "endpoint_url":      f"http://{MINIO_HOST}:{MINIO_PORT}",
@@ -78,20 +76,14 @@ def _derive_feature_columns() -> list[str]:
     Build FEATURE_COLUMNS from gold dim tables at startup — mirrors the Flink sink schema.
     Falls back to an empty list if dims aren't built yet (lets the process start anyway).
     """
-    def _read(table):
-        return DeltaTable(f"s3://lakehouse/topics/{table}", storage_options=_STORAGE_OPTIONS).to_pandas()
-
-    def _to_col(name):
-        return name.lower().replace(" ", "_").replace("-", "_")
-
     try:
         cols = []
         for table in ("dim_vital", "dim_lab"):
-            for _, row in _read(table).iterrows():
-                prefix = _to_col(row["event_name"])
+            for _, row in read_delta_table_as_pandas(table, _STORAGE_OPTIONS).iterrows():
+                prefix = to_col(row["event_name"])
                 cols.extend([f"{prefix}_{s}" for s in ("mean", "min", "max", "std")])
-        for _, row in _read("dim_medication").iterrows():
-            cols.append(f"{_to_col(row['event_name'])}_count")
+        for _, row in read_delta_table_as_pandas("dim_medication", _STORAGE_OPTIONS).iterrows():
+            cols.append(f"{to_col(row['event_name'])}_count")
         for roman in _ICD10_CHAPTERS:
             cols.append(f"icd_chap_{roman}")
         logger.info(f"Derived {len(cols)} feature columns from gold dim tables.")
