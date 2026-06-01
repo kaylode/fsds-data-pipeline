@@ -1,4 +1,4 @@
-.PHONY: up down logs ps clean check-ports free-ports install-podman build-spark generate ingest stream transform golden compute-features query-lakehouse datahub-ingest feast-apply feast-materialize feast-testview flink-stream feast-stream merge-features query-featurestore export-ml-dataset help
+.PHONY: up down logs ps clean check-ports free-ports install-podman build-spark generate ingest stream transform golden compute-features query-lakehouse datahub-ingest feast-setup flink-stream feast-stream merge-features query-featurestore export-ml-dataset help
 
 export PATH := $(HOME)/bin:$(HOME)/.local/bin:$(PATH)
 export CONTAINERS_CONF := $(shell pwd)/../.tmp/config/containers/containers.conf
@@ -9,6 +9,8 @@ export XDG_RUNTIME_DIR := $(shell pwd)/../.tmp/run
 
 # Start all core containers (Postgres, Kafka, MinIO, Hive Metastore, Trino)
 up:
+	@echo "📥 Ensuring Flink connector JARs are downloaded..."
+	@bash scripts/misc/download_jars.sh
 	@bash scripts/podman/run_podman.sh core up -d
 	@echo "⌛ Waiting for Postgres to accept connections..."
 	@until python3 -c "import socket; s = socket.socket(); s.settimeout(1); s.connect(('127.0.0.1', $${POSTGRES_PORT:-5432}))" >/dev/null 2>&1; do sleep 1; done
@@ -60,9 +62,7 @@ build-spark:
 #   Stream : clinical_event_stream.json                       → data/synthetic/
 generate:
 	@echo "🏭  Generating offline EHR Parquet tables..."
-	@uv run scripts/course-work/1a_generate_offline_ehr.py --mode offline
-	@echo "📡  Generating streaming EHR JSON events..."
-	@uv run scripts/course-work/1a_generate_offline_ehr.py --mode stream
+	@uv run scripts/course-work/1a_generate_offline_ehr.py
 	@echo "✅  Generation complete."
 
 # Ingest offline historical data into the Bronze Lakehouse (MinIO / Delta / Trino)
@@ -105,17 +105,9 @@ datahub-ingest:
 	@bash scripts/misc/datahub_ingest.sh
 
 # Feast Feature Store
-feast-apply:
-	@echo "✨  Applying Feast configurations..."
-	@uv run scripts/course-work/5_manage_feature_store.py --apply
-
-feast-materialize:
-	@echo "✨  Materializing batch features..."
-	@uv run scripts/course-work/5_manage_feature_store.py --materialize
-
-feast-testview:
-	@echo "✨  Testing feature view schema..."
-	@uv run scripts/course-work/5_manage_feature_store.py --testview
+feast-setup:
+	@echo "✨  Setting up Feast Feature Store (apply, materialize, testview)..."
+	@uv run scripts/course-work/5_manage_feature_store.py
 
 feast-stream:
 	@echo "📡  Starting Feast stream consumer (reads from patient-features-24h topic)..."
@@ -124,7 +116,7 @@ feast-stream:
 # Start unified Flink job: archives raw stream to Bronze + computes 24h rolling features
 flink-stream:
 	@echo "⚡  Starting unified Flink stream processor..."
-	@uv run scripts/course-work/6_flink_stream_processor.py --local
+	@uv run scripts/course-work/6_flink_stream_processor.py
 
 # Start 15-minute prediction feature merge loop (writes to prediction_features in PostgreSQL)
 merge-features:
@@ -163,8 +155,7 @@ help:
 	@echo "    make transform         PySpark: Bronze → Silver (clean, deduplicate)"
 	@echo "    make golden            PySpark: Silver → Gold (dims, facts, OBT, typed dims)"
 	@echo "    make compute-features  PySpark: Gold → feat_* tables + training labels"
-	@echo "    make feast-apply       Register Feast feature definitions"
-	@echo "    make feast-materialize Push batch features to the Feast online store"
+	@echo "    make feast-setup       Register and materialize Feast features"
 	@echo ""
 	@echo "  Streaming Pipeline (run continuously, in separate terminals)"
 	@echo "    make stream            Publish clinical events to Kafka (patient-events topic)"

@@ -68,7 +68,12 @@ def ingest_to_minio(paths):
         "allow_http": "true",
     }
     
-    write_opts = dict(storage_options=storage_options, mode="overwrite", schema_mode="overwrite")
+    write_opts = dict(
+        storage_options=storage_options,
+        mode="overwrite",
+        schema_mode="overwrite",
+        target_file_size=16 * 1024 * 1024,  # 16 MB per file — avoids IncompleteBody on large single-PUT uploads
+    )
 
     for table_key, path in paths.items():
         table_name = f"raw_{table_key}"

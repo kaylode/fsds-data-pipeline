@@ -251,10 +251,7 @@ def build_execution_env(local: bool) -> StreamExecutionEnvironment:
     cluster on job submission, and also via add_jars so it is on the local JVM
     classpath during graph construction.
     """
-    # Prefer the Flink 2.x Kafka connector (4.x series); fall back to 1.x
     kafka_jar = os.path.abspath(os.path.join(_FLINK_LIB, "flink-sql-connector-kafka-4.0.0-2.0.jar"))
-    if not os.path.exists(kafka_jar):
-        kafka_jar = os.path.abspath(os.path.join(_FLINK_LIB, "flink-sql-connector-kafka-3.3.0-1.19.jar"))
 
     config = Configuration()
     config.set_string("pipeline.jars", f"file://{kafka_jar}")

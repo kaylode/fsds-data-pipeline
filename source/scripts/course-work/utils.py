@@ -20,7 +20,7 @@ TRINO_PORT        = int(os.getenv("TRINO_PORT", "8090"))
 TRINO_USER        = os.getenv("TRINO_USER", "trino")
 
 _spark_master_port = os.getenv("SPARK_MASTER_PORT", "7077")
-SPARK_MASTER       = os.getenv("SPARK_MASTER_URL", f"spark://127.0.0.1:{_spark_master_port}")
+SPARK_MASTER       = os.getenv("SPARK_MASTER_URL", "local[*]")
 
 ICD10_CHAPTERS = [
     ("I",    "A",  "B"),
@@ -70,6 +70,10 @@ def build_spark_session(app_name: str) -> SparkSession:
         .config("spark.hadoop.fs.s3a.path.style.access",     "true")
         .config("spark.hadoop.fs.s3a.impl",                  "org.apache.hadoop.fs.s3a.S3AFileSystem")
         .config("spark.hadoop.fs.s3a.connection.ssl.enabled", "false")
+        .config("spark.hadoop.fs.s3a.fast.upload",            "true")
+        .config("spark.hadoop.fs.s3a.fast.upload.buffer",     "disk")
+        .config("spark.hadoop.fs.s3a.multipart.size",         str(5 * 1024 * 1024))
+        .config("spark.hadoop.fs.s3a.multipart.threshold",    "1")
         .config("spark.sql.extensions",
                 "io.delta.sql.DeltaSparkSessionExtension")
         .config("spark.sql.catalog.spark_catalog",
@@ -159,7 +163,7 @@ def run_with_spark_submit(file_path: str):
     
     if not is_submitted:
         logger.info("Script was not started with spark-submit. Submitting job to cluster via subprocess...")
-        spark_master = os.getenv("SPARK_MASTER_URL", f"spark://127.0.0.1:{os.getenv('SPARK_MASTER_PORT', '7077')}")
+        spark_master = os.getenv("SPARK_MASTER_URL", "local[*]")
         
         cmd = [
             "spark-submit",
