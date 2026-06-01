@@ -1,15 +1,21 @@
-.PHONY: up down logs ps clean check-ports free-ports install-podman generate ingest stream query help datahub-ingest
+.PHONY: up down logs ps clean check-ports free-ports install-podman build-spark generate ingest stream transform golden compute-features query-lakehouse datahub-ingest feast-apply feast-materialize feast-testview flink-stream feast-stream merge-features query-featurestore export-ml-dataset help
+
+export PATH := $(HOME)/bin:$(HOME)/.local/bin:$(PATH)
+export CONTAINERS_CONF := $(shell pwd)/../.tmp/config/containers/containers.conf
+export CONTAINERS_STORAGE_CONF := $(shell pwd)/../.tmp/config/containers/storage.conf
+export XDG_RUNTIME_DIR := $(shell pwd)/../.tmp/run
 
 # ─── Infrastructure ───────────────────────────────────────────────────────────
 
 # Start all core containers (Postgres, Kafka, MinIO, Hive Metastore, Trino)
 up:
 	@bash scripts/podman/run_podman.sh core up -d
-# 	@echo "⌛ Waiting for Postgres to accept connections..."
-# 	@until podman exec postgres pg_isready -U postgres >/dev/null 2>&1; do sleep 1; done
-# 	@echo "🔑 Ensuring all databases and roles exist..."
-# 	@bash scripts/misc/ensure_dbs.sh
-# 	@echo "🚀 Infrastructure is up and configured."
+	@echo "⌛ Waiting for Postgres to accept connections..."
+	@until python3 -c "import socket; s = socket.socket(); s.settimeout(1); s.connect(('127.0.0.1', $${POSTGRES_PORT:-5432}))" >/dev/null 2>&1; do sleep 1; done
+	@echo "🔑 Ensuring all databases and roles exist..."
+	@bash scripts/misc/ensure_dbs.sh
+	@echo "🚀 Infrastructure is up and configured."
+
 
 # Stop all containers
 down:
@@ -39,6 +45,14 @@ clean:
 install-podman:
 	@bash scripts/podman/install_podman_static.sh
 
+# Build the custom Spark image with Python 3.12 (needed to match host Python version).
+# Uses podman run+exec+commit instead of podman build to avoid lgetxattr errors
+# in rootless Podman when snapshotting layers that have security.capability xattrs.
+# Run this ONCE before 'make up'.
+build-spark:
+	@echo "🔨 Building Spark+Python3.12 image (run/exec/commit method)..."
+	@bash scripts/podman/build_spark_image.sh
+
 # ─── EHR Data Pipeline ───────────────────────────────────────────────────────
 
 # Generate both offline (Parquet) and stream (JSON) synthetic EHR data
@@ -64,11 +78,6 @@ stream:
 	@uv run scripts/course-work/1b_produce_stream.py
 	@echo "✅  Streaming complete."
 
-# Pull from Kafka topic → append to Delta Lake, then query the Bronze layer for an overview
-consume:
-	@echo "🔄  Consuming Kafka topic → Bronze Delta Lake..."
-	@uv run scripts/course-work/2b_consume_stream.py
-
 # Submit PySpark job from host to Spark Cluster for Silver transformations
 transform:
 	@echo "✨  Running PySpark Silver layer transformations..."
@@ -80,7 +89,13 @@ golden:
 	@uv run scripts/course-work/4_transform_to_gold.py
 	@echo "✅  Gold transformations complete."
 
-# Query and validate Lakehouse (Bronze & Silver) tables in Trino
+# Compute pre-aggregated feature tables (feat_*) and training labels (gold_visit_labels)
+features:
+	@echo "🧮  Computing feature tables and training labels..."
+	@uv run scripts/course-work/5_compute_features.py
+	@echo "✅  Feature engineering complete."
+
+# Query and validate all Lakehouse layers (Bronze / Silver / Gold) in Trino
 query-lakehouse:
 	@echo "🔍  Querying and validating Lakehouse tables..."
 	@uv run scripts/course-work/query_lakehouse.py
@@ -88,6 +103,43 @@ query-lakehouse:
 # Ingest all data sources to DataHub GMS
 datahub-ingest:
 	@bash scripts/misc/datahub_ingest.sh
+
+# Feast Feature Store
+feast-apply:
+	@echo "✨  Applying Feast configurations..."
+	@uv run scripts/course-work/5_manage_feature_store.py --apply
+
+feast-materialize:
+	@echo "✨  Materializing batch features..."
+	@uv run scripts/course-work/5_manage_feature_store.py --materialize
+
+feast-testview:
+	@echo "✨  Testing feature view schema..."
+	@uv run scripts/course-work/5_manage_feature_store.py --testview
+
+feast-stream:
+	@echo "📡  Starting Feast stream consumer (reads from patient-features-24h topic)..."
+	@uv run scripts/course-work/6_stream_to_online_store.py
+
+# Start unified Flink job: archives raw stream to Bronze + computes 24h rolling features
+flink-stream:
+	@echo "⚡  Starting unified Flink stream processor..."
+	@uv run scripts/course-work/6_flink_stream_processor.py --local
+
+# Start 15-minute prediction feature merge loop (writes to prediction_features in PostgreSQL)
+merge-features:
+	@echo "🔀  Starting 15-minute feature merge loop..."
+	@uv run scripts/course-work/7_merge_features.py
+
+# Test online feature retrieval from the Feast online store
+query-featurestore:
+	@echo "🔍  Testing online feature serving..."
+	@uv run scripts/course-work/query_featurestore.py --online
+
+# Build and save train.parquet + test.parquet for ML model training
+export-ml-dataset:
+	@echo "📦  Exporting ML train/test datasets..."
+	@uv run scripts/course-work/query_featurestore.py --export
 
 # ─── Help ────────────────────────────────────────────────────────────────────
 
@@ -105,11 +157,26 @@ help:
 	@echo "    make clean           Reset Podman storage and wipe .tmp"
 	@echo "    make install-podman  Install native statically-linked Podman"
 	@echo ""
-	@echo "  EHR Data Pipeline"
-	@echo "    make generate        Generate offline Parquet + streaming JSON data"
-	@echo "    make ingest          Ingest historical data into Bronze Lakehouse"
-	@echo "    make stream          Publish stream events to Kafka topic"
-	@echo "    make query-lakehouse Query and validate Lakehouse (Bronze + Silver) tables"
-	@echo "    make transform       Run PySpark Silver layer transformations"
-	@echo "    make datahub-ingest  Ingest all data sources to DataHub GMS"
+	@echo "  Batch Pipeline (run in order)"
+	@echo "    make generate          Generate offline Parquet + streaming JSON data"
+	@echo "    make ingest            Ingest historical data into Bronze Delta tables"
+	@echo "    make transform         PySpark: Bronze → Silver (clean, deduplicate)"
+	@echo "    make golden            PySpark: Silver → Gold (dims, facts, OBT, typed dims)"
+	@echo "    make compute-features  PySpark: Gold → feat_* tables + training labels"
+	@echo "    make feast-apply       Register Feast feature definitions"
+	@echo "    make feast-materialize Push batch features to the Feast online store"
+	@echo ""
+	@echo "  Streaming Pipeline (run continuously, in separate terminals)"
+	@echo "    make stream            Publish clinical events to Kafka (patient-events topic)"
+	@echo "    make flink-stream      Flink: archive raw stream to Bronze + 24h rolling features"
+	@echo "    make feast-stream      Bridge Flink output to Feast online store"
+	@echo ""
+	@echo "  Serving"
+	@echo "    make merge-features    Every 15 min: merge offline + online → prediction_features"
+	@echo ""
+	@echo "  Validation & ML Export"
+	@echo "    make query-lakehouse   Validate all Bronze / Silver / Gold tables in Trino"
+	@echo "    make query-featurestore  Test online feature retrieval from Feast"
+	@echo "    make export-ml-dataset   Build train.parquet + test.parquet for ML training"
+	@echo "    make datahub-ingest    Ingest metadata lineage to DataHub"
 	@echo ""

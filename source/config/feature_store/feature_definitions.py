@@ -1,0 +1,176 @@
+import os
+from datetime import timedelta
+
+from dotenv import load_dotenv
+from feast import Entity, FeatureService, FeatureView, Field, PushSource
+from feast.data_format import JsonFormat
+from feast.infra.offline_stores.contrib.trino_offline_store.trino_source import TrinoSource
+from feast.types import Float64, Int64, String
+
+CUR_DIR      = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.abspath(os.path.join(CUR_DIR, "..", ".."))
+os.environ["PROJECT_ROOT"] = PROJECT_ROOT
+load_dotenv(os.path.join(PROJECT_ROOT, ".env"))
+
+# ── Entity ────────────────────────────────────────────────────────────────────
+patient = Entity(name="patient", join_keys=["patient_id"])
+
+# ── ICD-10 chapter column names (must match 5_compute_features.py output) ─────
+_ICD_CHAPTERS = [
+    "I", "II", "III", "IV", "V", "VI", "VII", "VIII",
+    "IX", "X", "XI", "XII", "XIII", "XIV", "XV", "XVI",
+    "XVII", "XVIII", "XIX", "XX", "XXI", "XXII",
+]
+
+# ── Offline Batch Sources ──────────────────────────────────────────────────────
+# Each reads from a pre-aggregated feat_* Delta table produced by
+# 5_compute_features.py. `feature_timestamp` is the as-of date of the
+# snapshot; Feast uses it for point-in-time joins during training retrieval.
+
+_vitals_batch_source = TrinoSource(
+    name="feat_patient_vitals_6m",
+    timestamp_field="feature_timestamp",
+    query="(SELECT * FROM delta.gold.feat_patient_vitals_6m)",
+)
+
+_labs_batch_source = TrinoSource(
+    name="feat_patient_labs_6m",
+    timestamp_field="feature_timestamp",
+    query="(SELECT * FROM delta.gold.feat_patient_labs_6m)",
+)
+
+_icd_batch_source = TrinoSource(
+    name="feat_patient_icd_6m",
+    timestamp_field="feature_timestamp",
+    query="(SELECT * FROM delta.gold.feat_patient_icd_6m)",
+)
+
+_medication_batch_source = TrinoSource(
+    name="feat_patient_medication_6m",
+    timestamp_field="feature_timestamp",
+    query="(SELECT * FROM delta.gold.feat_patient_medication_6m)",
+)
+
+_demographics_source = TrinoSource(
+    name="feat_patient_demographics",
+    timestamp_field="feature_timestamp",
+    query="(SELECT * FROM delta.gold.feat_patient_demographics)",
+)
+
+# ── Streaming Source (vitals — real-time push from 6_stream_to_online_store.py)
+# Schema matches the DataFrame pushed via store.push() in the stream consumer.
+patient_vitals_stream_source = PushSource(
+    name="patient_vitals_stream",
+    batch_source=_vitals_batch_source,
+)
+
+# ── Feature Views ─────────────────────────────────────────────────────────────
+
+patient_vitals_fv = FeatureView(
+    name="patient_vitals",
+    entities=[patient],
+    ttl=timedelta(days=365),
+    schema=[
+        Field(name="heart_rate_mean",   dtype=Float64),
+        Field(name="heart_rate_min",    dtype=Float64),
+        Field(name="heart_rate_max",    dtype=Float64),
+        Field(name="heart_rate_std",    dtype=Float64),
+        Field(name="systolic_bp_mean",  dtype=Float64),
+        Field(name="systolic_bp_min",   dtype=Float64),
+        Field(name="systolic_bp_max",   dtype=Float64),
+        Field(name="systolic_bp_std",   dtype=Float64),
+        Field(name="diastolic_bp_mean", dtype=Float64),
+        Field(name="diastolic_bp_min",  dtype=Float64),
+        Field(name="diastolic_bp_max",  dtype=Float64),
+        Field(name="diastolic_bp_std",  dtype=Float64),
+        Field(name="temperature_mean",  dtype=Float64),
+        Field(name="temperature_min",   dtype=Float64),
+        Field(name="temperature_max",   dtype=Float64),
+        Field(name="temperature_std",   dtype=Float64),
+    ],
+    online=True,
+    source=patient_vitals_stream_source,
+)
+
+patient_labs_fv = FeatureView(
+    name="patient_labs",
+    entities=[patient],
+    ttl=timedelta(days=365),
+    schema=[
+        Field(name="glucose_mean",    dtype=Float64),
+        Field(name="glucose_min",     dtype=Float64),
+        Field(name="glucose_max",     dtype=Float64),
+        Field(name="glucose_std",     dtype=Float64),
+        Field(name="creatinine_mean", dtype=Float64),
+        Field(name="creatinine_min",  dtype=Float64),
+        Field(name="creatinine_max",  dtype=Float64),
+        Field(name="creatinine_std",  dtype=Float64),
+        Field(name="wbc_mean",        dtype=Float64),
+        Field(name="wbc_min",         dtype=Float64),
+        Field(name="wbc_max",         dtype=Float64),
+        Field(name="wbc_std",         dtype=Float64),
+        Field(name="hemoglobin_mean", dtype=Float64),
+        Field(name="hemoglobin_min",  dtype=Float64),
+        Field(name="hemoglobin_max",  dtype=Float64),
+        Field(name="hemoglobin_std",  dtype=Float64),
+    ],
+    online=True,
+    source=_labs_batch_source,
+)
+
+patient_icd_fv = FeatureView(
+    name="patient_icd",
+    entities=[patient],
+    ttl=timedelta(days=365),
+    schema=[
+        Field(name=f"icd_chap_{r}", dtype=Int64)
+        for r in _ICD_CHAPTERS
+    ],
+    online=True,
+    source=_icd_batch_source,
+)
+
+patient_medication_fv = FeatureView(
+    name="patient_medication",
+    entities=[patient],
+    ttl=timedelta(days=365),
+    schema=[
+        Field(name="lisinopril_count",   dtype=Int64),
+        Field(name="metformin_count",    dtype=Int64),
+        Field(name="amoxicillin_count",  dtype=Int64),
+        Field(name="atorvastatin_count", dtype=Int64),
+    ],
+    online=True,
+    source=_medication_batch_source,
+)
+
+patient_demographics_fv = FeatureView(
+    name="patient_demographics",
+    entities=[patient],
+    ttl=timedelta(days=36500),  # effectively permanent — demographics rarely change
+    schema=[
+        Field(name="gender",      dtype=String),
+        Field(name="ethnic",      dtype=String),
+        Field(name="country",     dtype=String),
+        Field(name="age",         dtype=Float64),
+        Field(name="is_deceased", dtype=Int64),
+    ],
+    online=True,
+    source=_demographics_source,
+)
+
+# ── Feature Service ────────────────────────────────────────────────────────────
+# Covers both use cases:
+#   Training  → store.get_historical_features(entity_df, features=patient_ml_features_v1)
+#   Prediction → store.get_online_features(entity_rows, features=patient_ml_features_v1)
+
+patient_ml_features_v1 = FeatureService(
+    name="patient_ml_features_v1",
+    features=[
+        patient_vitals_fv,
+        patient_labs_fv,
+        patient_icd_fv,
+        patient_medication_fv,
+        patient_demographics_fv,
+    ],
+)

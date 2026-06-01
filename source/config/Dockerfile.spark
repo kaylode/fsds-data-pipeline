@@ -1,0 +1,68 @@
+FROM docker.io/apache/spark:3.5.6-scala2.12-java11-python3-ubuntu
+
+USER root
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Rootless Podman: don't drop apt sandbox to _apt user (setgroups fails)
+# Dir::Log redirects term.log away from /var/log/apt/ (not writable in this image)
+RUN mkdir -p /tmp/apt-archives/partial /tmp/apt-log && \
+    apt-get \
+        -o APT::Sandbox::User=root \
+        -o Dir::Cache::archives=/tmp/apt-archives \
+        -o Dir::Log=/tmp/apt-log \
+        -o DPkg::Options::="--log=/tmp/dpkg.log" \
+        update && \
+    apt-get \
+        -o APT::Sandbox::User=root \
+        -o Dir::Cache::archives=/tmp/apt-archives \
+        -o Dir::Log=/tmp/apt-log \
+        -o DPkg::Options::="--log=/tmp/dpkg.log" \
+        install -y --no-install-recommends \
+            curl \
+            gnupg \
+            ca-certificates && \
+    rm -rf /tmp/apt-archives /var/lib/apt/lists/*
+
+# Add deadsnakes PPA manually — avoids software-properties-common → systemd
+RUN gpg \
+        --keyserver hkp://keyserver.ubuntu.com:80 \
+        --recv-keys F23C5A6CF475977595C89F51BA6932366A755776 && \
+    gpg --export F23C5A6CF475977595C89F51BA6932366A755776 \
+        > /etc/apt/trusted.gpg.d/deadsnakes.gpg && \
+    . /etc/os-release && \
+    echo "deb https://ppa.launchpadcontent.net/deadsnakes/ppa/ubuntu ${VERSION_CODENAME} main" \
+        > /etc/apt/sources.list.d/deadsnakes.list
+
+# Install Python 3.12 from deadsnakes
+RUN mkdir -p /tmp/apt-archives/partial /tmp/apt-log && \
+    apt-get \
+        -o APT::Sandbox::User=root \
+        -o Dir::Cache::archives=/tmp/apt-archives \
+        -o Dir::Log=/tmp/apt-log \
+        -o DPkg::Options::="--log=/tmp/dpkg.log" \
+        update && \
+    apt-get \
+        -o APT::Sandbox::User=root \
+        -o Dir::Cache::archives=/tmp/apt-archives \
+        -o Dir::Log=/tmp/apt-log \
+        -o DPkg::Options::="--log=/tmp/dpkg.log" \
+        install -y --no-install-recommends \
+            python3.12 \
+            python3.12-dev \
+            python3.12-venv && \
+    rm -rf /tmp/apt-archives /var/lib/apt/lists/*
+
+# Bootstrap pip for Python 3.12
+RUN python3.12 -m ensurepip --upgrade && \
+    python3.12 -m pip install --upgrade pip setuptools --no-cache-dir
+
+# Give spark user a home so pip install --user works
+RUN mkdir -p /home/spark && chown spark:spark /home/spark
+
+USER spark
+ENV HOME=/home/spark \
+    PATH=/home/spark/.local/bin:$PATH \
+    PYSPARK_PYTHON=/usr/bin/python3.12
+
+ENTRYPOINT ["/opt/entrypoint.sh"]

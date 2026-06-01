@@ -48,13 +48,27 @@ services:
       - PGPORT=$POSTGRES_PORT
     volumes:
       - ../../.tmp/postgres-data:/var/lib/postgresql/data
-      - ./postgres-init:/docker-entrypoint-initdb.d
+      # - ./postgres-init:/docker-entrypoint-initdb.d
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "postgres"]
       interval: 5s
       timeout: 5s
       retries: 5
     command: ["postgres", "-c", "wal_level=logical"]
+
+  redis:
+    image: docker.io/library/redis:7-alpine
+    hostname: redis
+    container_name: redis
+    network_mode: host
+    user: "999:999"
+    x-podman.uidmaps:
+      - "999:0:1"
+    x-podman.gidmaps:
+      - "999:0:1"
+    volumes:
+      - ../../.tmp/redis-data:/data
+    command: redis-server --port ${REDIS_PORT:-6379} --save 60 1 --loglevel warning
 
   minio:
     image: docker.io/minio/minio:latest
@@ -135,7 +149,10 @@ services:
   # Official Apache Spark image. Runs as UID 185 ('spark' user).
   # Jobs are submitted from the host via: uv run spark-submit --master spark://127.0.0.1:7077
   spark-master:
-    image: docker.io/apache/spark:3.5.6-scala2.12-java11-python3-ubuntu
+    image: localhost/spark-3.12:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.spark
     container_name: spark-master
     network_mode: host
     user: "185:185"
@@ -157,6 +174,7 @@ services:
     environment:
       SPARK_NO_DAEMONIZE: "true"
       SPARK_LOCAL_IP: "127.0.0.1"
+      PYSPARK_PYTHON: /usr/local/bin/python3.12
     volumes:
       - ../../.tmp/spark-logs:/opt/spark/logs
       - ./conf/spark/spark-defaults.conf:/opt/spark/conf/spark-defaults.conf:ro
@@ -164,7 +182,10 @@ services:
       - minio
 
   spark-worker:
-    image: docker.io/apache/spark:3.5.6-scala2.12-java11-python3-ubuntu
+    image: localhost/spark-3.12:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.spark
     container_name: spark-worker
     network_mode: host
     user: "185:185"
@@ -182,8 +203,59 @@ services:
       SPARK_WORKER_WEBUI_PORT: "${SPARK_WORKER_WEBUI_PORT:-8091}"
       SPARK_NO_DAEMONIZE: "true"
       SPARK_LOCAL_IP: "127.0.0.1"
+      PYSPARK_PYTHON: /usr/local/bin/python3.12
     volumes:
       - ../../.tmp/spark-logs:/opt/spark/logs
       - ./conf/spark/spark-defaults.conf:/opt/spark/conf/spark-defaults.conf:ro
     depends_on:
       - spark-master
+
+
+  # ── Apache Flink Streaming Cluster ────────────────────────────────────────────
+  # Handles real-time 24h sliding window feature computation per patient.
+  # The Kafka SQL connector JAR must be placed in .tmp/flink-lib/ before starting:
+  #   wget -P .tmp/flink-lib https://repo1.maven.org/maven2/org/apache/flink/flink-sql-connector-kafka/3.1.0-1.19/flink-sql-connector-kafka-3.1.0-1.19.jar
+  # flink-jobmanager:
+  #   image: docker.io/apache/flink:2.2.0-java17
+  #   container_name: flink-jobmanager
+  #   network_mode: host
+  #   user: "9999:9999"
+  #   x-podman.uidmaps:
+  #     - "9999:0:1"
+  #   x-podman.gidmaps:
+  #     - "9999:0:1"
+  #   command: jobmanager
+  #   environment:
+  #     FLINK_PROPERTIES: |
+  #       jobmanager.rpc.address: 127.0.0.1
+  #       jobmanager.rpc.port: ${FLINK_JM_PORT:-6123}
+  #       rest.address: 127.0.0.1
+  #       rest.port: ${FLINK_REST_PORT:-8088}
+  #       python.client.executable: python3
+  #       taskmanager.numberOfTaskSlots: 4
+  #   volumes:
+  #     - ../../.tmp/flink-logs:/opt/flink/log
+  #     - ../../.tmp/flink-lib:/opt/flink/lib/extra:ro
+
+  # flink-taskmanager:
+  #   image: docker.io/apache/flink:2.2.0-java17
+  #   container_name: flink-taskmanager
+  #   network_mode: host
+  #   user: "9999:9999"
+  #   x-podman.uidmaps:
+  #     - "9999:0:1"
+  #   x-podman.gidmaps:
+  #     - "9999:0:1"
+  #   command: taskmanager
+  #   environment:
+  #     FLINK_PROPERTIES: |
+  #       jobmanager.rpc.address: 127.0.0.1
+  #       jobmanager.rpc.port: ${FLINK_JM_PORT:-6123}
+  #       taskmanager.numberOfTaskSlots: 4
+  #       taskmanager.memory.process.size: 2g
+  #       python.client.executable: python3
+  #   volumes:
+  #     - ../../.tmp/flink-logs:/opt/flink/log
+  #     - ../../.tmp/flink-lib:/opt/flink/lib/extra:ro
+  #   depends_on:
+  #     - flink-jobmanager
