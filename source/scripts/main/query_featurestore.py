@@ -18,9 +18,9 @@ Two modes:
   --all      Run both modes.
 
 Run:
-    uv run scripts/course-work/query_featurestore.py --export
-    uv run scripts/course-work/query_featurestore.py --online
-    uv run scripts/course-work/query_featurestore.py --all
+    uv run scripts/main/query_featurestore.py --export
+    uv run scripts/main/query_featurestore.py --online
+    uv run scripts/main/query_featurestore.py --all
 
 Prerequisites:
     - Gold tables built        (make golden)

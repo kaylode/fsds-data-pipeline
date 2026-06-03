@@ -10,7 +10,7 @@ Submit from the host machine with:
     uv run spark-submit \
         --master spark://127.0.0.1:7077 \
         --packages io.delta:delta-spark_2.12:3.3.0,org.apache.hadoop:hadoop-aws:3.3.4,com.amazonaws:aws-java-sdk-bundle:1.12.262 \
-        source/scripts/course-work/4_transform_to_gold.py
+        source/scripts/main/4_transform_to_gold.py
 """
 
 import os

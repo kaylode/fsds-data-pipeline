@@ -2,7 +2,7 @@
 # scripts/podman/run_podman.sh
 # Centralized control script for FSDS container stacks under rootless Podman.
 # Usage:
-#   run_podman.sh [core|sglang] [command] [args...]
+#   run_podman.sh [core|airflow|datahub|storage] [command] [args...]
 # Default stack is 'core', default command is 'up'.
 
 # Get project directories
@@ -18,7 +18,7 @@ STACK="core"
 COMMAND=""
 SHIFT_COUNT=0
 
-if [ "$1" = "core" ] || [ "$1" = "sglang" ] || [ "$1" = "storage" ] || [ "$1" = "airflow" ] || [ "$1" = "datahub" ]; then
+if [ "$1" = "core" ] || [ "$1" = "storage" ] || [ "$1" = "airflow" ] || [ "$1" = "datahub" ]; then
     STACK="$1"
     COMMAND="${2:-up}"
     SHIFT_COUNT=2
@@ -68,10 +68,7 @@ export XDG_RUNTIME_DIR="$WORKSPACE_DIR/.tmp/run"
 mkdir -p -m 700 "$XDG_RUNTIME_DIR"
 
 # Configure stack-specific variables
-if [ "$STACK" = "sglang" ]; then
-    COMPOSE_FILE="config/docker-compose-sglang.yaml"
-    SERVICE_NAME="SGLang"
-elif [ "$STACK" = "airflow" ]; then
+if [ "$STACK" = "airflow" ]; then
     COMPOSE_FILE="config/orchestration/docker-compose-airflow.yaml"
     SERVICE_NAME="Airflow"
 elif [ "$STACK" = "datahub" ]; then
@@ -91,28 +88,6 @@ if [ ! -f "$COMPOSE_FILE" ]; then
     exit 1
 fi
 
-# Pretty-print available models if starting SGLang server
-if [ "$STACK" = "sglang" ] && [ "$COMMAND" = "up" ]; then
-    BOLD='\033[1m'
-    GREEN='\033[0;32m'
-    CYAN='\033[0;36m'
-    NC='\033[0m' # No Color
-
-    echo -e "${BOLD}${CYAN}=================================================================${NC}"
-    echo -e "${BOLD}📂 AVAILABLE CLUSTER MODELS (/home/support/llm):${NC}"
-    echo -e "${BOLD}${CYAN}=================================================================${NC}"
-    if [ -d "/home/support/llm" ]; then
-        for dir in /home/support/llm/*; do
-            if [ -d "$dir" ] && [ "$(basename "$dir")" != "lfs" ] && [ "$(basename "$dir")" != "lost+found" ] && [ "$(basename "$dir")" != "README" ]; then
-                echo -e "  ${GREEN}•${NC} ${BOLD}$(basename "$dir")${NC}"
-            fi
-        done
-    else
-        echo -e "  ${BOLD}(No cluster models found at /home/support/llm)${NC}"
-    fi
-    echo -e "${BOLD}${CYAN}=================================================================${NC}"
-    echo ""
-fi
 
 # Add --image-volume=ignore only for run/up commands to prevent named volume errors
 EXTRA_ARGS=()

@@ -109,7 +109,7 @@ with DAG(
     dag_id="datahub_metadata_ingestion",
     description="Refresh metadata for all sources (postgres, kafka, hive, trino, minio) in DataHub",
     start_date=datetime(2024, 1, 1),
-    schedule_interval="0 */6 * * *",
+    schedule_interval="*/5 * * * *",
     catchup=False,
     tags=["datahub", "metadata", "ingestion"],
 ) as dag:

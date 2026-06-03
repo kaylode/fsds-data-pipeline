@@ -19,7 +19,7 @@ Submit with:
     uv run spark-submit \\
         --master spark://127.0.0.1:7077 \\
         --packages io.delta:delta-spark_2.12:3.3.0,org.apache.hadoop:hadoop-aws:3.3.4,com.amazonaws:aws-java-sdk-bundle:1.12.262 \\
-        source/scripts/course-work/5_compute_features.py
+        source/scripts/main/5_compute_features.py
 """
 
 import os

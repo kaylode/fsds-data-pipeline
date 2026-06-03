@@ -11,10 +11,13 @@ x-airflow-common:
     AIRFLOW__CORE__FERNET_KEY: '${AIRFLOW_FERNET_KEY:-}'
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
     AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+    AIRFLOW__WEBSERVER__WORKERS: '2'
+    AIRFLOW__WEBSERVER__WEB_SERVER_MASTER_TIMEOUT: '300'
+    AIRFLOW__WEBSERVER__WORKER_TIMEOUT: '300'
     AIRFLOW__LOGGING__DAG_PROCESSOR_MANAGER_LOG_LOCATION: /opt/airflow/logs/dag_processor_manager/dag_processor_manager.log
     AIRFLOW__DATAHUB__ENABLED: '${AIRFLOW_DATAHUB_ENABLED:-false}'
-    AIRFLOW_CONN_DATAHUB_REST_DEFAULT: '{"conn_type": "datahub_rest", "host": "http://127.0.0.1:8088"}'
-    DATAHUB_GMS_URL: 'http://127.0.0.1:8088'
+    AIRFLOW_CONN_DATAHUB_REST_DEFAULT: '{"conn_type": "datahub_rest", "host": "http://127.0.0.1:${DATAHUB_GMS_PORT:-8088}"}'
+    DATAHUB_GMS_URL: 'http://127.0.0.1:${DATAHUB_GMS_PORT:-8088}'
     AIRFLOW__WEBSERVER__WEB_SERVER_PORT: '${AIRFLOW_WEBSERVER_PORT:-8082}'
     # Data source connection details
     POSTGRES_HOST: '127.0.0.1'
@@ -39,7 +42,7 @@ x-airflow-common:
     - ./logs:/opt/airflow/logs
     - ./plugins:/opt/airflow/plugins
     - ./data:/opt/airflow/data          # Sample CSV data for the pipeline
-    - ../../scripts/course-work:/opt/airflow/scripts:ro   # EHR pipeline scripts (2a–7)
+    - ../../scripts/main:/opt/airflow/scripts:ro   # EHR pipeline scripts (2a–7)
     - ../feature_store:/opt/airflow/feature_store:ro      # Feast repo (feature_store.yaml + feature_definitions.py)
   user: "${AIRFLOW_UID:-50000}:0"
   x-podman.uidmaps:

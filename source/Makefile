@@ -1,4 +1,4 @@
-.PHONY: up down logs ps clean check-ports free-ports install-podman build-spark generate ingest stream transform golden compute-features query-lakehouse datahub-up datahub-down datahub-logs datahub-ingest datahub-register feast-setup flink-stream feast-stream merge-features query-featurestore export-ml-dataset help airflow-up airflow-down airflow-logs build-airflow
+.PHONY: up down logs ps clean check-ports free-ports install-podman build-spark generate ingest stream transform golden compute-features query-lakehouse datahub-up datahub-down datahub-logs datahub-ingest datahub-enrich datahub-register feast-setup flink-stream feast-stream merge-features query-featurestore export-ml-dataset help airflow-up airflow-down airflow-logs airflow-ps build-airflow
 
 export PATH := $(HOME)/bin:$(HOME)/.local/bin:$(PATH)
 export CONTAINERS_CONF := $(shell pwd)/../.tmp/config/containers/containers.conf
@@ -10,7 +10,7 @@ export XDG_RUNTIME_DIR := $(shell pwd)/../.tmp/run
 # Start all core containers (Postgres, Kafka, MinIO, Hive Metastore, Trino)
 up:
 	@echo "📥 Ensuring Flink connector JARs are downloaded..."
-	@bash scripts/misc/download_jars.sh
+	@bash scripts/installation/download_jars.sh
 	@bash scripts/podman/run_podman.sh core up -d
 	@echo "⌛ Waiting for Postgres to accept connections..."
 	@until python3 -c "import socket; s = socket.socket(); s.settimeout(1); s.connect(('127.0.0.1', $${POSTGRES_PORT:-5432}))" >/dev/null 2>&1; do sleep 1; done
@@ -40,10 +40,10 @@ build-airflow:
 airflow-up:
 	@echo "🚀 Starting Airflow..."
 	@bash scripts/podman/run_podman.sh airflow up -d
-	@echo "⌛ Waiting for Airflow Webserver to be healthy (timeout 120s)..."
+	@echo "⌛ Waiting for Airflow Webserver to be healthy (timeout 300s)..."
 	@i=0; until curl -s --fail http://127.0.0.1:$${AIRFLOW_WEBSERVER_PORT:-8082}/health >/dev/null 2>&1; do \
 		sleep 2; echo -n "."; i=$$((i+2)); \
-		if [ $$i -ge 120 ]; then echo ""; echo "❌ Timed out. Check logs: make airflow-logs"; exit 1; fi; \
+		if [ $$i -ge 300 ]; then echo ""; echo "❌ Timed out. Check logs: make airflow-logs"; exit 1; fi; \
 	done
 	@echo ""
 	@echo "✅ Airflow is up at http://127.0.0.1:$${AIRFLOW_WEBSERVER_PORT:-8082} (user: airflow / pass: airflow)"
@@ -55,6 +55,10 @@ airflow-down:
 # Follow Airflow container logs
 airflow-logs:
 	@bash scripts/podman/run_podman.sh airflow logs
+
+# Show Airflow container status
+airflow-ps:
+	@bash scripts/podman/run_podman.sh airflow ps
 
 
 # Check if configured ports are in use
@@ -88,43 +92,43 @@ build-spark:
 #   Stream : clinical_event_stream.json                       → data/synthetic/
 generate:
 	@echo "🏭  Generating offline EHR Parquet tables..."
-	@uv run scripts/course-work/1a_generate_offline_ehr.py
+	@uv run scripts/main/1a_generate_offline_ehr.py
 	@echo "✅  Generation complete."
 
 # Ingest offline historical data into the Bronze Lakehouse (MinIO / Delta / Trino)
 #   Topics: raw_patients, raw_wards, raw_events
 ingest:
 	@echo "📥  Ingesting historical EHR data into Bronze layer..."
-	@uv run scripts/course-work/2a_ingest_to_bronze.py
+	@uv run scripts/main/2a_ingest_to_bronze.py
 	@echo "✅  Ingestion complete."
 
 # Simulate live event streaming: publish JSON events to a Kafka topic
 stream:
 	@echo "🚀  Publishing clinical events to Kafka topic..."
-	@uv run scripts/course-work/1b_produce_stream.py
+	@uv run scripts/main/1b_produce_stream.py
 	@echo "✅  Streaming complete."
 
 # Submit PySpark job from host to Spark Cluster for Silver transformations
 transform:
 	@echo "✨  Running PySpark Silver layer transformations..."
-	@uv run scripts/course-work/3_transform_to_silver.py
+	@uv run scripts/main/3_transform_to_silver.py
 	@echo "✅  Silver transformations complete."
 
 golden:
 	@echo "✨  Running PySpark Gold layer transformations..."
-	@uv run scripts/course-work/4_transform_to_gold.py
+	@uv run scripts/main/4_transform_to_gold.py
 	@echo "✅  Gold transformations complete."
 
 # Compute pre-aggregated feature tables (feat_*) and training labels (gold_visit_labels)
 features:
 	@echo "🧮  Computing feature tables and training labels..."
-	@uv run scripts/course-work/5_compute_features.py
+	@uv run scripts/main/5_compute_features.py
 	@echo "✅  Feature engineering complete."
 
 # Query and validate all Lakehouse layers (Bronze / Silver / Gold) in Trino
 query-lakehouse:
 	@echo "🔍  Querying and validating Lakehouse tables..."
-	@uv run scripts/course-work/query_lakehouse.py
+	@uv run scripts/main/query_lakehouse.py
 
 # Start DataHub metadata platform (opensearch + gms + actions + frontend)
 # Requires core stack to be running first: make up
@@ -136,6 +140,10 @@ datahub-up:
 	@until curl -s --fail http://127.0.0.1:$${DATAHUB_GMS_PORT:-8088}/health >/dev/null 2>&1; do sleep 3; echo -n "."; done
 	@echo ""
 	@echo "✅ DataHub is up — UI: http://127.0.0.1:$${DATAHUB_FRONTEND_PORT:-9002}  GMS: http://127.0.0.1:$${DATAHUB_GMS_PORT:-8088}"
+	@echo "📥 Running source ingestion (postgres, kafka, trino, feast)..."
+	@bash scripts/misc/datahub_ingest.sh || echo "⚠️  datahub-ingest had failures — check output above"
+	@echo "🏷️  Enriching dataset metadata (docs, owners, tags, domain)..."
+	@~/.local/bin/uv run scripts/misc/datahub_enrich_metadata.py || echo "⚠️  Metadata enrichment had failures — re-run: make datahub-enrich"
 
 # Stop DataHub stack only (leaves core infrastructure running)
 datahub-down:
@@ -149,20 +157,25 @@ datahub-logs:
 datahub-ingest:
 	@bash scripts/misc/datahub_ingest.sh
 
+# Enrich DataHub dataset metadata (docs, owners, tags, domain, terms) — one-shot
+datahub-enrich:
+	@echo "🏷️  Enriching DataHub dataset metadata..."
+	@~/.local/bin/uv run scripts/misc/datahub_enrich_metadata.py
+
 # Start unified Flink job: archives raw stream to Bronze + computes 24h rolling features
 flink-stream:
 	@echo "⚡  Starting unified Flink stream processor..."
-	@uv run scripts/course-work/6_flink_stream_processor.py
+	@uv run scripts/main/6_flink_stream_processor.py
 
 # Unified feature pipeline: apply + materialize + stream push + 60s merge loop
 feature-pipeline:
 	@echo "🚀  Starting unified feature pipeline (Ctrl-C to stop)..."
-	@uv run scripts/course-work/7_feature_pipeline.py
+	@uv run scripts/main/7_feature_pipeline.py
 
 # Test online feature retrieval from the Feast online store
 query-featurestore:
 	@echo "🔍  Testing online feature serving..."
-	@uv run scripts/course-work/query_featurestore.py --online
+	@uv run scripts/main/query_featurestore.py --online
 
 # ─── Help ────────────────────────────────────────────────────────────────────
 

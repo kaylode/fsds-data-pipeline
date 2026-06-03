@@ -39,4 +39,4 @@ elif [ -f "$HOME/bin/podman" ]; then
 fi
 
 echo "✅ Deadlock resolved. Podman storage has been reset."
-echo "You can now safely restart your stacks (e.g., make sglang-up)."
+echo "You can now safely restart your stacks (e.g., make up)."

@@ -30,7 +30,7 @@ services:
       # then remove this line for better index performance.
       node.store.allow_mmap: "false"
     healthcheck:
-      test: ["CMD-SHELL", "curl -sS --fail 'http://127.0.0.1:9200/_cluster/health?wait_for_status=yellow&timeout=10s'"]
+      test: ["CMD-SHELL", "curl -sS --fail 'http://127.0.0.1:${OPENSEARCH_PORT:-9200}/_cluster/health?wait_for_status=yellow&timeout=10s'"]
       interval: 10s
       timeout: 20s
       retries: 15

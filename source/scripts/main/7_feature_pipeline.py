@@ -11,12 +11,12 @@ Keeps the Feast feature store current by running two parallel processes:
 
 This script is a pure producer — it only writes to the online store (Redis).
 To query features or export ML datasets use query_featurestore.py:
-    uv run scripts/course-work/query_featurestore.py --online
-    uv run scripts/course-work/query_featurestore.py --export
+    uv run scripts/main/query_featurestore.py --online
+    uv run scripts/main/query_featurestore.py --export
 
 Run:
-    uv run scripts/course-work/7_feature_pipeline.py
-    uv run scripts/course-work/7_feature_pipeline.py --skip-full-materialize
+    uv run scripts/main/7_feature_pipeline.py
+    uv run scripts/main/7_feature_pipeline.py --skip-full-materialize
 
 Stop with Ctrl-C — the Kafka consumer thread exits cleanly.
 """

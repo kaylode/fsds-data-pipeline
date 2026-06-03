@@ -4,8 +4,8 @@ provider: local
 registry: data/registry.db
 offline_store:
     type: trino
-    host: ${TRINO_HOST}
-    port: ${TRINO_PORT}
+    host: 127.0.0.1
+    port: 8090
     http-scheme: http
     ssl-verify: false
     catalog: delta
@@ -16,7 +16,7 @@ offline_store:
     auth: ~
 online_store:
     type: redis
-    connection_string: 127.0.0.1:${REDIS_PORT}
+    connection_string: 127.0.0.1:6379
 # Prevents "Unsupported Hive type: timestamp(3) with time zone" TrinoUserError
 coerce_tz_aware: false
 entity_key_serialization_version: 3

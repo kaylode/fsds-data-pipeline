@@ -8,6 +8,16 @@ source:
           security.protocol: "PLAINTEXT"
     stateful_ingestion:
         enabled: false
+    topic_patterns:
+      deny:
+        # DataHub internal topics — hide from catalog
+        - "^_.*"                              # __consumer_offsets, _schemas
+        - "^MetadataChangeLog.*"
+        - "^MetadataChangeProposal.*"
+        - "^MetadataAuditEvent.*"
+        - "^DataHubUsageEvent.*"
+        - "^PlatformEvent.*"
+        - "^datahub.*"
 
 sink:
   type: "datahub-rest"

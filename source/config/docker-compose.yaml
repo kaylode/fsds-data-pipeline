@@ -72,6 +72,24 @@ services:
     depends_on:
       - kafka
 
+  redpanda-console:
+    image: docker.io/redpandadata/console:latest
+    container_name: redpanda-console
+    network_mode: host
+    user: "1000:1000"
+    x-podman.uidmaps:
+      - "1000:0:1"
+    x-podman.gidmaps:
+      - "1000:0:1"
+    environment:
+      KAFKA_BROKERS: "127.0.0.1:${KAFKA_PORT:-9092}"
+      KAFKA_SCHEMAREGISTRY_ENABLED: "true"
+      KAFKA_SCHEMAREGISTRY_URLS: "http://127.0.0.1:${SCHEMA_REGISTRY_PORT:-8081}"
+      SERVER_LISTENPORT: "${REDPANDA_CONSOLE_PORT:-8086}"
+    depends_on:
+      - kafka
+      - schema-registry
+
   redis:
     image: docker.io/library/redis:7-alpine
     hostname: redis

@@ -1,7 +1,7 @@
 source:
   type: feast
   config:
-    path: "/feast-meta-repo"
+    path: "/feast-repo"
     environment: "PROD"
 sink:
   type: "datahub-rest"
