@@ -1,4 +1,4 @@
-.PHONY: up down logs ps clean check-ports free-ports install-podman build-spark generate ingest stream transform golden compute-features query-lakehouse datahub-ingest feast-setup flink-stream feast-stream merge-features query-featurestore export-ml-dataset help
+.PHONY: up down logs ps clean check-ports free-ports install-podman build-spark generate ingest stream transform golden compute-features query-lakehouse datahub-up datahub-down datahub-logs datahub-ingest datahub-register feast-setup flink-stream feast-stream merge-features query-featurestore export-ml-dataset help airflow-up airflow-down airflow-logs build-airflow
 
 export PATH := $(HOME)/bin:$(HOME)/.local/bin:$(PATH)
 export CONTAINERS_CONF := $(shell pwd)/../.tmp/config/containers/containers.conf
@@ -30,6 +30,32 @@ logs:
 # Show container status
 ps:
 	@bash scripts/podman/run_podman.sh core ps
+
+# Build custom Airflow image using host-exec-export-import approach to avoid permission errors
+build-airflow:
+	@echo "🔨 Building Airflow custom image (export/import method)..."
+	@bash scripts/podman/build_airflow_image.sh
+
+# Start Airflow stack (image must already be built via: make build-airflow)
+airflow-up:
+	@echo "🚀 Starting Airflow..."
+	@bash scripts/podman/run_podman.sh airflow up -d
+	@echo "⌛ Waiting for Airflow Webserver to be healthy (timeout 120s)..."
+	@i=0; until curl -s --fail http://127.0.0.1:$${AIRFLOW_WEBSERVER_PORT:-8082}/health >/dev/null 2>&1; do \
+		sleep 2; echo -n "."; i=$$((i+2)); \
+		if [ $$i -ge 120 ]; then echo ""; echo "❌ Timed out. Check logs: make airflow-logs"; exit 1; fi; \
+	done
+	@echo ""
+	@echo "✅ Airflow is up at http://127.0.0.1:$${AIRFLOW_WEBSERVER_PORT:-8082} (user: airflow / pass: airflow)"
+
+# Stop Airflow stack
+airflow-down:
+	@bash scripts/podman/run_podman.sh airflow down
+
+# Follow Airflow container logs
+airflow-logs:
+	@bash scripts/podman/run_podman.sh airflow logs
+
 
 # Check if configured ports are in use
 check-ports:
@@ -100,7 +126,26 @@ query-lakehouse:
 	@echo "🔍  Querying and validating Lakehouse tables..."
 	@uv run scripts/course-work/query_lakehouse.py
 
-# Ingest all data sources to DataHub GMS
+# Start DataHub metadata platform (opensearch + gms + actions + frontend)
+# Requires core stack to be running first: make up
+datahub-up:
+	@echo "📊 Starting DataHub metadata platform..."
+	@bash scripts/misc/ensure_dbs.sh
+	@bash scripts/podman/run_podman.sh datahub up -d
+	@echo "⌛ Waiting for DataHub GMS to be healthy..."
+	@until curl -s --fail http://127.0.0.1:$${DATAHUB_GMS_PORT:-8088}/health >/dev/null 2>&1; do sleep 3; echo -n "."; done
+	@echo ""
+	@echo "✅ DataHub is up — UI: http://127.0.0.1:$${DATAHUB_FRONTEND_PORT:-9002}  GMS: http://127.0.0.1:$${DATAHUB_GMS_PORT:-8088}"
+
+# Stop DataHub stack only (leaves core infrastructure running)
+datahub-down:
+	@bash scripts/podman/run_podman.sh datahub down
+
+# Follow DataHub container logs
+datahub-logs:
+	@bash scripts/podman/run_podman.sh datahub logs
+
+# Ingest all data sources to DataHub GMS (one-shot)
 datahub-ingest:
 	@bash scripts/misc/datahub_ingest.sh
 
@@ -119,11 +164,6 @@ query-featurestore:
 	@echo "🔍  Testing online feature serving..."
 	@uv run scripts/course-work/query_featurestore.py --online
 
-# Build and save train.parquet + test.parquet for ML model training
-export-ml-dataset:
-	@echo "📦  Exporting ML train/test datasets..."
-	@uv run scripts/course-work/query_featurestore.py --export
-
 # ─── Help ────────────────────────────────────────────────────────────────────
 
 help:
@@ -131,10 +171,13 @@ help:
 	@echo "  FSDS EHR Pipeline — available targets"
 	@echo "  ────────────────────────────────────────────────────────────────"
 	@echo "  Infrastructure"
-	@echo "    make up              Start all core containers"
-	@echo "    make down            Stop all containers"
-	@echo "    make logs            Follow container logs"
+	@echo "    make up              Start core stack (Kafka, Spark, Flink, Trino, MinIO, Postgres, Redis)"
+	@echo "    make down            Stop core stack"
+	@echo "    make logs            Follow core container logs"
 	@echo "    make ps              List container status"
+	@echo "    make datahub-up      Start DataHub platform (run after make up)"
+	@echo "    make datahub-down    Stop DataHub platform"
+	@echo "    make datahub-logs    Follow DataHub container logs"
 	@echo "    make check-ports     Check if configured ports are in use"
 	@echo "    make free-ports      Kill all processes occupying configured ports"
 	@echo "    make clean           Reset Podman storage and wipe .tmp"
@@ -160,5 +203,6 @@ help:
 	@echo "    make query-lakehouse   Validate all Bronze / Silver / Gold tables in Trino"
 	@echo "    make query-featurestore  Test online feature retrieval from Feast"
 	@echo "    make export-ml-dataset   Build train.parquet + test.parquet for ML training"
-	@echo "    make datahub-ingest    Ingest metadata lineage to DataHub"
+	@echo "    make datahub-ingest    One-shot metadata ingestion to DataHub"
+	@echo "    make datahub-register  Register all sources with DataHub managed ingestion (runs on schedule)"
 	@echo ""

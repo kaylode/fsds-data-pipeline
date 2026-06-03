@@ -39,6 +39,13 @@ CONFIG = {
     "skew_ratio_ward":        0.85,        # 85% of visits occur in 'General_Ward'
     "duplicate_rate_events":  0.02,        # 2% duplicate rate in events table
     "schema_evolution_date":  "2023-08-01",  # visits before this date have NULL severity_level
+    # ── Drift scenario ────────────────────────────────────────────────────────
+    # From 2023-10-01 the hospital deployed pulse oximeters in all wards.
+    # SpO2 (blood oxygen %) events start appearing in the events table from
+    # this date onward at a 30% sampling rate per visit.  The silver pipeline
+    # must handle this new event type gracefully (coalesce NULLs for older rows).
+    "data_drift_date":        "2023-10-01",
+    "drift_spo2_rate":        0.30,        # 30% of post-drift visits get ≥1 SpO2 reading
 }
 
 # ── Reference Pools ────────────────────────────────────────────────────────────
@@ -76,7 +83,12 @@ EVENT_METADATA_DEFS = [
     {"event_type_id": "D02", "event_name": "Diabetes",      "event_description": "Type 2 diabetes mellitus (ICD-10 E11.9)",               "unit_of_measurement": None, "event_type": "diagnosis"},
     {"event_type_id": "D03", "event_name": "URI",           "event_description": "Acute upper respiratory infection, unspecified (ICD-10 J06.9)", "unit_of_measurement": None, "event_type": "diagnosis"},
     {"event_type_id": "D04", "event_name": "Hyperlipidemia","event_description": "Hyperlipidemia, unspecified (ICD-10 E78.5)",            "unit_of_measurement": None, "event_type": "diagnosis"},
+    # Drift event — added 2023-10-01 when pulse oximeters were deployed hospital-wide
+    {"event_type_id": "V05", "event_name": "SpO2",          "event_description": "Blood oxygen saturation via pulse oximetry",            "unit_of_measurement": "%",   "event_type": "vital"},
 ]
+
+# Separate pool used only for post-drift event sampling
+_DRIFT_EVENT_METADATA_DEFS = EVENT_METADATA_DEFS  # includes V05 SpO2
 
 
 # ── Generation ─────────────────────────────────────────────────────────────────
@@ -89,9 +101,10 @@ def generate_offline_data(output_dir: str) -> None:
     cfg = CONFIG
     np.random.seed(cfg["random_seed"])
 
-    start_date       = datetime.strptime(cfg["start_date"], "%Y-%m-%d")
-    end_date         = datetime.strptime(cfg["end_date"],   "%Y-%m-%d")
+    start_date       = datetime.strptime(cfg["start_date"],         "%Y-%m-%d")
+    end_date         = datetime.strptime(cfg["end_date"],           "%Y-%m-%d")
     schema_evol_date = datetime.strptime(cfg["schema_evolution_date"], "%Y-%m-%d")
+    drift_date       = datetime.strptime(cfg["data_drift_date"],    "%Y-%m-%d")
     total_days       = (end_date - start_date).days
 
     # ── 1. Patients ──────────────────────────────────────────────────────────
@@ -206,15 +219,33 @@ def generate_offline_data(output_dir: str) -> None:
         diff_sec = int((max_ts - adm_ts).total_seconds())
         event_timestamps.append(adm_ts + timedelta(seconds=np.random.randint(0, max(1, diff_sec))))
 
-    meta_indices = np.random.choice(len(EVENT_METADATA_DEFS), cfg["n_events"])
+    # Pre-drift pool excludes V05 SpO2; post-drift pool includes it.
+    pre_drift_pool  = [m for m in EVENT_METADATA_DEFS if m["event_type_id"] != "V05"]
+    post_drift_pool = EVENT_METADATA_DEFS  # includes V05
+
+    meta_indices = []
+    for ts in event_timestamps:
+        pool = post_drift_pool if ts >= drift_date else pre_drift_pool
+        meta_indices.append(int(np.random.choice(len(pool))))
+
+    # Re-map indices to the correct pool per event
+    resolved_meta = []
+    for ts, idx in zip(event_timestamps, meta_indices):
+        pool = post_drift_pool if ts >= drift_date else pre_drift_pool
+        resolved_meta.append(pool[idx])
 
     num_values, text_values = [], []
-    for idx in meta_indices:
-        meta   = EVENT_METADATA_DEFS[idx]
-        e_type = meta["event_type"]
-        e_name = meta["event_name"]
+    for meta_row in resolved_meta:
+        e_type = meta_row["event_type"]
+        e_name = meta_row["event_name"]
         if e_type == "vital":
-            lookup = {"Heart Rate": (75, 12), "Systolic BP": (120, 15), "Diastolic BP": (80, 8), "Temperature": (36.8, 0.4)}
+            lookup = {
+                "Heart Rate":   (75,    12),
+                "Systolic BP":  (120,   15),
+                "Diastolic BP": (80,     8),
+                "Temperature":  (36.8,   0.4),
+                "SpO2":         (97.5,   1.5),   # blood oxygen 95–100 % normal range
+            }
             mu, sigma = lookup.get(e_name, (0, 1))
             num_values.append(np.round(np.random.normal(mu, sigma), 1))
             text_values.append(None)
@@ -228,15 +259,15 @@ def generate_offline_data(output_dir: str) -> None:
             text_values.append(f"Administered {e_name} per physician prescription")
         else:
             num_values.append(None)
-            text_values.append(f"Confirmed diagnosis: {meta['event_description']}")
+            text_values.append(f"Confirmed diagnosis: {meta_row['event_description']}")
 
     df_events = pd.DataFrame({
         "event_id":        event_ids,
         "visit_id":        event_visits,
         "event_timestamp": event_timestamps,
-        "event_type":      [EVENT_METADATA_DEFS[i]["event_type"]    for i in meta_indices],
-        "event_type_id":   [EVENT_METADATA_DEFS[i]["event_type_id"] for i in meta_indices],
-        "event_name":      [EVENT_METADATA_DEFS[i]["event_name"]    for i in meta_indices],
+        "event_type":      [m["event_type"]    for m in resolved_meta],
+        "event_type_id":   [m["event_type_id"] for m in resolved_meta],
+        "event_name":      [m["event_name"]    for m in resolved_meta],
         "text_value":      text_values,
         "num_value":       num_values,
     })
@@ -261,6 +292,11 @@ def generate_offline_data(output_dir: str) -> None:
     n_unique = df_events["event_id"].nunique()
     total    = len(df_events)
     logger.info(f"- Duplication:    {(total - n_unique) / n_unique * 100:.2f}% duplicates injected in events")
+    # Drift scenario metrics
+    n_spo2       = (df_events["event_type_id"] == "V05").sum()
+    n_post_drift = (df_events["event_timestamp"] >= drift_date).sum()
+    logger.info(f"- Data Drift:     {n_spo2:,} SpO2 events after {cfg['data_drift_date']} "
+                f"({n_spo2/max(n_post_drift,1)*100:.1f}% of post-drift events)")
 
 
 # ── Entry Point ────────────────────────────────────────────────────────────────

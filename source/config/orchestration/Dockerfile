@@ -9,7 +9,9 @@ RUN /usr/local/bin/python -m pip install --no-cache-dir \
     "acryl-datahub[airflow]" \
     "acryl-datahub-airflow-plugin" \
     "pandas" \
-    "sqlglot"
+    "sqlglot" \
+    "python-dotenv" \
+    "feast[trino]"
 
 USER 50000
 

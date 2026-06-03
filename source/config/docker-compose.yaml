@@ -48,13 +48,29 @@ services:
       - PGPORT=$POSTGRES_PORT
     volumes:
       - ../../.tmp/postgres-data:/var/lib/postgresql/data
-      # - ./postgres-init:/docker-entrypoint-initdb.d
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "postgres"]
       interval: 5s
       timeout: 5s
       retries: 5
     command: ["postgres", "-c", "wal_level=logical", "-c", "lock_timeout=30000", "-c", "idle_in_transaction_session_timeout=60000"]
+
+  schema-registry:
+    image: docker.io/confluentinc/cp-schema-registry:latest
+    hostname: schema-registry
+    container_name: schema-registry
+    network_mode: host
+    user: "1000:1000"
+    x-podman.uidmaps:
+      - "1000:0:1"
+    x-podman.gidmaps:
+      - "1000:0:1"
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: 127.0.0.1
+      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:${SCHEMA_REGISTRY_PORT:-8081}
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: 127.0.0.1:${KAFKA_PORT:-9092}
+    depends_on:
+      - kafka
 
   redis:
     image: docker.io/library/redis:7-alpine

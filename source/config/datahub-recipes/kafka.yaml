@@ -4,6 +4,11 @@ source:
     connection:
       bootstrap: "127.0.0.1:${KAFKA_PORT}"
       schema_registry_url: "http://127.0.0.1:${SCHEMA_REGISTRY_PORT}"
+      consumer_config:
+          security.protocol: "PLAINTEXT"
+    stateful_ingestion:
+        enabled: false
+
 sink:
   type: "datahub-rest"
   config:

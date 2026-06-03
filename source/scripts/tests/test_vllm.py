@@ -2,11 +2,13 @@
 # A clean, zero-dependency testing script to query your local vLLM OpenAI-compatible API server
 
 import json
+import os
 import urllib.request
 from loguru import logger
 
 def main():
-    url = "http://localhost:8000/v1/chat/completions"
+    base = os.getenv("VLLM_URL", f"http://localhost:{os.getenv('VLLM_PORT', '8000')}")
+    url = f"{base}/v1/chat/completions"
     headers = {"Content-Type": "application/json"}
     
     # Define query matching vLLM format (serving model at path '/model')
@@ -19,7 +21,7 @@ def main():
         "temperature": 0.7
     }
     
-    logger.info("📡 Connecting to local vLLM server on localhost:8000...")
+    logger.info(f"📡 Connecting to local vLLM server on {url}...")
     
     try:
         req = urllib.request.Request(

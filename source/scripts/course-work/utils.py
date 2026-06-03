@@ -33,7 +33,11 @@ SPARK_S3A_MULTIPART_THRESHOLD = str(64 * 1024 * 1024)
 SPARK_S3A_FAST_UPLOAD_BUFFER  = "disk"
 SPARK_EVENT_LOG_ENABLED       = "true"
 _spark_log_path               = os.path.abspath(os.path.join(project_root, "..", ".tmp", "spark-logs"))
-os.makedirs(_spark_log_path, exist_ok=True)
+try:
+    os.makedirs(_spark_log_path, exist_ok=True)
+except:
+    pass
+
 SPARK_EVENT_LOG_DIR           = f"file://{_spark_log_path}"
 
 ICD10_CHAPTERS = [

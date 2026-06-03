@@ -1,7 +1,8 @@
 source:
-  type: "hive-metastore"
+  type: feast
   config:
-    host_port: "127.0.0.1:${HIVE_METASTORE_PORT}"
+    path: "/feast-meta-repo"
+    environment: "PROD"
 sink:
   type: "datahub-rest"
   config:

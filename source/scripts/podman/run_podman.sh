@@ -18,7 +18,7 @@ STACK="core"
 COMMAND=""
 SHIFT_COUNT=0
 
-if [ "$1" = "core" ] || [ "$1" = "sglang" ] || [ "$1" = "storage" ]; then
+if [ "$1" = "core" ] || [ "$1" = "sglang" ] || [ "$1" = "storage" ] || [ "$1" = "airflow" ] || [ "$1" = "datahub" ]; then
     STACK="$1"
     COMMAND="${2:-up}"
     SHIFT_COUNT=2
@@ -71,6 +71,12 @@ mkdir -p -m 700 "$XDG_RUNTIME_DIR"
 if [ "$STACK" = "sglang" ]; then
     COMPOSE_FILE="config/docker-compose-sglang.yaml"
     SERVICE_NAME="SGLang"
+elif [ "$STACK" = "airflow" ]; then
+    COMPOSE_FILE="config/orchestration/docker-compose-airflow.yaml"
+    SERVICE_NAME="Airflow"
+elif [ "$STACK" = "datahub" ]; then
+    COMPOSE_FILE="config/docker-compose-datahub.yaml"
+    SERVICE_NAME="DataHub"
 elif [ "$STACK" = "storage" ]; then
     echo "⚠️ Stack 'storage' has been merged into 'core'. Running 'core' stack instead."
     COMPOSE_FILE="config/docker-compose.yaml"

@@ -13,3 +13,6 @@ wheels/
 .tmp
 ./source/data
 .crush
+
+# Airflow runtime logs
+source/config/orchestration/logs/

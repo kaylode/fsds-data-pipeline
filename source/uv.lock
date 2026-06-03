@@ -53,6 +53,35 @@ wheels = [
 ]
 
 [package.optional-dependencies]
+feast = [
+    { name = "aiohttp" },
+    { name = "avro" },
+    { name = "avro-gen3" },
+    { name = "cached-property" },
+    { name = "click" },
+    { name = "click-default-group" },
+    { name = "click-spinner" },
+    { name = "dask", extra = ["dataframe"] },
+    { name = "deprecated" },
+    { name = "docker" },
+    { name = "expandvars" },
+    { name = "feast" },
+    { name = "flask-openid" },
+    { name = "humanfriendly" },
+    { name = "ijson" },
+    { name = "jsonref" },
+    { name = "jsonschema" },
+    { name = "numpy" },
+    { name = "packaging" },
+    { name = "progressbar2" },
+    { name = "psutil" },
+    { name = "python-dateutil" },
+    { name = "pyyaml" },
+    { name = "requests-file" },
+    { name = "ruamel-yaml" },
+    { name = "tabulate" },
+    { name = "toml" },
+]
 hive = [
     { name = "acryl-datahub-classify" },
     { name = "acryl-great-expectations" },
@@ -1228,7 +1257,7 @@ wheels = [
 
 [[package]]
 name = "dask"
-version = "2026.3.0"
+version = "2024.6.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
@@ -1239,16 +1268,30 @@ dependencies = [
     { name = "pyyaml" },
     { name = "toolz" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d7/2a/5d8cc1579590af86576dde890254440e478c7174b93a02095ecfc2e6ba38/dask-2026.3.0.tar.gz", hash = "sha256:f7d96c8274e8a900d217c1ff6ea8d1bbf0b4c2c21e74a409644498d925eb8f85", size = 11000710, upload-time = "2026-03-18T07:10:14.945Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/cc/91/d4beec51ce74079cd53b7b5c357eaf91d4631e14be5fa46b1c852d5404a2/dask-2024.6.2.tar.gz", hash = "sha256:d429d6b19e85fd1306ac37c188aaf99d03bbe69a6fe59d2b42882b2ac188686f", size = 9396918, upload-time = "2024-06-20T20:01:39.371Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/4a/f3/00bb1e867fba351e2d784170955713bee200c43ea306c59f30bd7e748192/dask-2026.3.0-py3-none-any.whl", hash = "sha256:be614b9242b0b38288060fb2d7696125946469c98a1c30e174883fd199e0428d", size = 1485630, upload-time = "2026-03-18T07:10:12.832Z" },
+    { url = "https://files.pythonhosted.org/packages/cb/a0/b375bff1437832698e3d1d5f036fb27234712b6a4773ca35d040ec2237f8/dask-2024.6.2-py3-none-any.whl", hash = "sha256:81b80ee015b2e057b93bb2d1bf13a866136e762e2b24bf54b6b621e8b86b7708", size = 1232880, upload-time = "2024-06-20T20:01:25.211Z" },
 ]
 
 [package.optional-dependencies]
 dataframe = [
+    { name = "dask-expr" },
     { name = "numpy" },
     { name = "pandas" },
+]
+
+[[package]]
+name = "dask-expr"
+version = "1.1.6"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "dask" },
+    { name = "pandas" },
     { name = "pyarrow" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/96/94/112f868889beb7692e222e2bc0ddb00274905f48f76b2d4f081abf3b7438/dask_expr-1.1.6.tar.gz", hash = "sha256:ace366c6d9c248a7fa7b48f7a34140afae3b6a0ea14ee57743babe5a9d1ef43f", size = 189453, upload-time = "2024-06-21T12:20:39.11Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a2/22/485d17faf5f833e7f37a11f9ee3b563d8a98879c6e84925e75ef0b733aa0/dask_expr-1.1.6-py3-none-any.whl", hash = "sha256:04e31cb941b7cbdce7b1384f2bcf17fd17e828e45e9c74491e28473095ee6891", size = 206607, upload-time = "2024-06-21T12:20:35.52Z" },
 ]
 
 [[package]]
@@ -1592,6 +1635,19 @@ wheels = [
 ]
 
 [[package]]
+name = "flask-openid"
+version = "1.3.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "flask" },
+    { name = "python3-openid" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/69/c1/58cf6947fc8b0a92085df8be085960e70200b50606ff62673ef83127d609/flask_openid-1.3.1.tar.gz", hash = "sha256:27628bc0a37e6530948823193e068d79035ad9496d87b74040443ec484c7657a", size = 36711, upload-time = "2024-05-26T15:49:12.575Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/98/b2/65517080f52cec9be6eaf53a89da45aa0ffb09256833af63a9d8cd1ed807/Flask_OpenID-1.3.1-py3-none-any.whl", hash = "sha256:be65ab20c639841bbf0602684b278be8cfbbccbc39558da06b6d127470753fc4", size = 9392, upload-time = "2024-05-26T15:49:11.206Z" },
+]
+
+[[package]]
 name = "fonttools"
 version = "4.63.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1647,8 +1703,9 @@ name = "fsds"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
-    { name = "acryl-datahub", extra = ["hive", "hive-metastore", "kafka", "postgres", "s3", "trino"] },
+    { name = "acryl-datahub", extra = ["feast", "hive", "hive-metastore", "kafka", "postgres", "s3", "trino"] },
     { name = "apache-beam" },
+    { name = "apache-flink" },
     { name = "avro" },
     { name = "cloudpickle" },
     { name = "confluent-kafka" },
@@ -1687,9 +1744,10 @@ flink = [
 
 [package.metadata]
 requires-dist = [
-    { name = "acryl-datahub", extras = ["hive", "hive-metastore", "kafka", "postgres", "s3", "trino"], specifier = ">=1.3.1.5" },
+    { name = "acryl-datahub", extras = ["feast", "hive", "hive-metastore", "kafka", "postgres", "s3", "trino"], specifier = ">=1.3.1.5" },
     { name = "apache-beam", extras = ["gcp"], specifier = ">=2.72.0" },
     { name = "apache-beam", extras = ["tfrecord"], specifier = ">=2.72.0" },
+    { name = "apache-flink", specifier = ">=2.2.0" },
     { name = "avro" },
     { name = "cloudpickle", specifier = ">=3.1.2" },
     { name = "confluent-kafka", specifier = ">=2.14.0" },
@@ -4149,6 +4207,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/13/4c/ef8b7b1046d65c1f18ca31e5235c7d6627ca2b3f389ab1d44a74d22f5cc9/python_utils-3.9.1.tar.gz", hash = "sha256:eb574b4292415eb230f094cbf50ab5ef36e3579b8f09e9f2ba74af70891449a0", size = 35403, upload-time = "2024-11-26T00:38:58.736Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/d4/69/31c82567719b34d8f6b41077732589104883771d182a9f4ff3e71430999a/python_utils-3.9.1-py2.py3-none-any.whl", hash = "sha256:0273d7363c7ad4b70999b2791d5ba6b55333d6f7a4e4c8b6b39fb82b5fab4613", size = 32078, upload-time = "2024-11-26T00:38:57.488Z" },
+]
+
+[[package]]
+name = "python3-openid"
+version = "3.2.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "defusedxml" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/5f/4a/29feb8da6c44f77007dcd29518fea73a3d5653ee02a587ae1f17f1f5ddb5/python3-openid-3.2.0.tar.gz", hash = "sha256:33fbf6928f401e0b790151ed2b5290b02545e8775f982485205a066f874aaeaf", size = 305600, upload-time = "2020-06-29T12:15:49.026Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e0/a5/c6ba13860bdf5525f1ab01e01cc667578d6f1efc8a1dba355700fb04c29b/python3_openid-3.2.0-py3-none-any.whl", hash = "sha256:6626f771e0417486701e0b4daff762e7212e820ca5b29fcc0d05f6f8736dfa6b", size = 133681, upload-time = "2020-06-29T12:15:47.502Z" },
 ]
 
 [[package]]

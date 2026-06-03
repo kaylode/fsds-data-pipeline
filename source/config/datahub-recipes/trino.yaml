@@ -1,9 +1,21 @@
+pipeline_name: "trino-delta"
+
 source:
   type: "trino"
   config:
     host_port: "127.0.0.1:${TRINO_PORT}"
     database: "delta"
     username: "trino"
+    include_views: true
+    include_tables: true
+    schema_pattern:
+        deny:
+            - "^information_schema$"
+    profiling:
+        enabled: true
+        profile_table_level_only: true
+    stateful_ingestion:
+        enabled: true
 sink:
   type: "datahub-rest"
   config:
