@@ -6,7 +6,8 @@
 
 ---
 
-See [./docs](docs) for detailed documentations of the project. This is my submission for [FSDS course](https://fullstackdatascience.com/) K9-EDAI-1.
+See [./docs](docs) for detailed documentations of the project. 
+<!-- This is my submission for [FSDS course](https://fullstackdatascience.com/) K9-EDAI-1. -->
 
 ## Architecture
 
