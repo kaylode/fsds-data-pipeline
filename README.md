@@ -2,7 +2,7 @@
 
 > A production-grade **Medallion Data Lakehouse** with a **Real-Time ML Feature Store**, built entirely on synthetic Electronic Health Records (EHR). The system ingests raw clinical data from both batch (Parquet files) and stream (Kafka) sources, applies a three-layer medallion transformation (Bronze → Silver → Gold) using Apache Spark and PyFlink, and materialises ML-ready patient features into an offline (Trino/Delta Lake) and online (Redis) Feast feature store. Metadata governance is handled end-to-end by DataHub, with pipeline orchestration via Apache Airflow. The dataset represents ~1,000 synthetic patients across 5 clinical event types (vitals, labs, medications, diagnoses, ward events), covering admissions, discharges, and longitudinal clinical measurements.
 >
-> All services run **rootless** via **Podman** (no Docker daemon, no root required) using `network_mode: host` for maximum compatibility on shared HPC / university clusters.
+> All services run **rootless** via **Podman** (no Docker daemon, no root required) using `network_mode: host` and **uv** as package manager.
 
 ---
 
@@ -11,22 +11,22 @@
 ```
 ┌─────────────────────────────── DATA SOURCES ──────────────────────────────────┐
 │  1a. EHR Generator → patients / wards / visits / events (Parquet)             │
-│  1b. Stream Producer → clinical_event_stream.json → Kafka: patient-events     │
-└───────────────────────┬───────────────────────────────────────────────────────┘
-                        │
-          ┌─────────────┴──────────────────────────────────────────┐
-          │ BATCH PATH                      STREAMING PATH          │
-          │                                                         │
+│  1b. Stream Producer → infinite loop → Kafka: patient-events                  │
+└──────────────────────────┬────────────────────────────────────────────────────┘
+                           │
+┌──────────────────────────┴────────────────────────────────────────┐
+          │ BATCH PATH                      │     STREAMING PATH    │
+          │                                 │                       │
           ▼                                 ▼                       │
   2a. Bronze Ingest               6_flink_stream_processor          │
   (Pandas → Delta Lake)           ┌──────────────────────────┐      │
-  raw_patients                    │  Reads Kafka ONCE        │      │
-  raw_wards                       │  Fan-out to 2 sinks:     │      │
+  raw_patients                    │  Reads Kafka Topics      │      │
+  raw_wards                       │       Infinitely         │      │
   raw_event_metadata              │                          │      │
-  raw_visits                      │  Sink A: raw_streams     │      │
-  raw_events                      │  (Delta Lake, Bronze)    │      │
+  raw_visits                      │                          │      │
+  raw_events                      │                          │      │
           │                       │                          │      │
-          │                       │  Sink B: SLIDE(24h/15m)  │      │
+          │                       │  Sink : SLIDE(24h/15m)   │      │
           ▼                       │  → patient-features-24h  │      │
   3. Silver Transform             │    (Kafka)               │      │
   (PySpark)                       └────────────┬─────────────┘      │
@@ -88,7 +88,7 @@ See [`docs/00_installation.md`](docs/00_installation.md) for full installation a
 
 ## Run Guide
 
-> **First time?** See [`docs/00_installation.md`](docs/00_installation.md) for Podman installation, JAR download, and image build instructions.
+> See [`docs/00_installation.md`](docs/00_installation.md) for Podman installation, JAR download, and image build instructions.
 
 ### 0. Prerequisites
 
@@ -119,7 +119,7 @@ make airflow-up    # Airflow webserver + scheduler
 make ps
 ```
 
-> _[Screenshot placeholder: output of `make ps` showing all containers healthy]_
+[image](artifacts/containers.png)
 
 ### 3. Batch pipeline (run in order)
 
@@ -136,24 +136,6 @@ make features       # Feature tables + training labels
 make stream            # publish events → Kafka: patient-events
 make flink-stream      # Flink: Bronze archival + 24h sliding window → Kafka: patient-features-24h
 make feature-pipeline  # Feast apply + materialize + continuous Kafka → Redis push
-```
-
-**Streaming data flow:**
-```
-1b_produce_stream.py
-        │
-        ▼  (Kafka: patient-events)
-6_flink_stream_processor.py
-        │
-        ├──▶  Sink A: Delta Lake (raw_streams, Bronze)
-        │
-        └──▶  Sink B: Kafka: patient-features-24h
-                        │
-                        ▼
-              7_feature_pipeline.py
-                        │
-                        ▼  (store.push())
-                  Redis online store
 ```
 
 ### 5. Validate
@@ -178,94 +160,6 @@ make query-featurestore   # test online feature retrieval from Feast
 
 ---
 
-## Airflow DAGs
-
-Two DAGs are registered:
-
-| DAG | Schedule | Purpose |
-|---|---|---|
-| `ehr_data_pipeline` | `@daily` | Full batch + streaming pipeline: ingest → validate → silver → gold → features → feast materialize, plus Flink stream processor + stream feature push |
-| `datahub_metadata_ingestion` | `*/5 * * * *` | Crawls all sources (postgres, kafka, hive, trino, minio) and refreshes DataHub catalogue |
-
-### `ehr_data_pipeline` task graph
-
-```
-bronze_ingest
-    │
-    ▼
-validate_bronze        ← quality gates: row count, null PK, duplicate PK
-    │                    results emitted as AssertionRunEvents to DataHub
-    ▼
-silver_transform
-    │
-    ▼
-gold_transform
-    │
-    ▼
-compute_features
-    │
-    ▼
-feast_materialize       ← feast apply + feast materialize → Redis
-
-flink_stream_processor  ─── (independent branch, runs in parallel)
-    │
-    ▼
-push_stream_features    ← drains patient-features-24h → Redis
-```
-
-Each task emits **DataHub lineage events** (DataFlow, DataJob, UpstreamLineage MCPs) and records execution metadata to the `ehr_pipeline_runs` PostgreSQL table.
-
----
-
-## DataHub Governance
-
-DataHub is automatically populated when running `make datahub-up`. It tracks:
-
-- **Dataset catalogue** — all Bronze, Silver, Gold, Feature, Kafka, and Redis datasets
-- **Column-level lineage** — from raw Parquet files through to the online feature store
-- **Quality assertions** — from the `validate_bronze` task (row count, null PK, duplicate PK)
-- **Ownership, Tags, Glossary Terms, Domains** — via `make datahub-enrich`
-
-Registered sources (via `datahub_metadata_ingestion` DAG):
-
-| Source | Type | What is crawled |
-|---|---|---|
-| `ingest_postgres` | `postgres` | Airflow DB + Hive metastore schemas |
-| `ingest_kafka` | `kafka` | Topics + Schema Registry |
-| `ingest_hive_metastore` | `hive-metastore` | Hive catalog (Delta table mappings) |
-| `ingest_trino` | `trino` | All `delta.*` tables via Trino |
-| `ingest_minio_lakehouse` | `s3` | S3 paths under `s3://lakehouse/` |
-
----
-
-## Storage Layout
-
-All runtime data is isolated under `.tmp/` (never committed to git):
-
-```
-.tmp/
-├── kafka-data/          Kafka KRaft log storage
-├── postgres-data/       PostgreSQL data directory
-├── redis-data/          Redis persistence
-├── minio-data/
-│   └── lakehouse/
-│       └── topics/      All Delta Lake tables
-│           ├── raw_*/           Bronze batch tables
-│           ├── raw_streams/     Bronze stream archive (Flink)
-│           ├── stg_*/           Silver tables
-│           ├── dim_*/           Gold dimension tables
-│           ├── fact_*/          Gold fact tables
-│           ├── obt_*/           Gold one-big-table
-│           ├── feat_*/          Feature tables (Feast offline)
-│           └── gold_visit_labels/  Training labels
-├── spark-logs/          Spark application logs
-├── flink-logs/          Flink job logs
-└── flink-lib/           Flink connector JARs (auto-downloaded by make up)
-```
-
-Run `make clean` to wipe all `.tmp/` state and start fresh.
-
----
 
 ## Port Directory
 
