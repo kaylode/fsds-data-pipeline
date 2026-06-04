@@ -29,6 +29,8 @@ output = str(artifacts / "pipeline_diagram")
 
 datahub_logo = str(script_dir / "logos" / "datahub.png")
 feast_logo   = str(script_dir / "logos" / "feast.png")
+podman_logo  = str(script_dir / "logos" / "podman.png")
+uv_logo      = str(script_dir / "logos" / "uv.png")
 
 # ── Graph config ──────────────────────────────────────────────────────────────
 graph_attr = {
@@ -98,6 +100,14 @@ with Diagram(
         hive_metastore = Server("Hive Metastore\n(Schema Registry)")
         postgres = PostgreSQL("PostgreSQL\n(Metastore & Airflow DB)")
 
+    # ── Platform & Runtimes ───────────────────────────────────────────────────
+    with Cluster("Platform & Runtimes"):
+        podman = Custom("Podman\n(Container Engine)", podman_logo)
+        uv_pkg = Custom("uv\n(Package Manager)", uv_logo)
+        
+        # Horizontal layout constraint
+        podman >> Edge(style="invis") >> uv_pkg
+
     # ── Governance & Orchestration ────────────────────────────────────────────
     with Cluster("Governance & Orchestration"):
         airflow  = Airflow("Airflow Orchestration\n(DAG Scheduler)")
@@ -105,6 +115,8 @@ with Diagram(
         
         # Horizontal layout constraint
         airflow >> Edge(style="invis") >> datahub
+        uv_pkg >> Edge(style="invis") >> airflow
+
 
     # ── Feature Store (Feast) ─────────────────────────────────────────────────
     with Cluster("Feast Feature Store"):
