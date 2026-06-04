@@ -4,10 +4,10 @@
 
 The feature store is built on **Feast** and provides two complementary serving paths:
 
-| Path | Latency | Source | Use case |
+| Path  | Source | Use case |
 |---|---|---|---|
-| **Offline** | Seconds–minutes | Trino / Delta Lake (`feat_*` tables) | Training data retrieval, point-in-time joins |
-| **Online** | < 5ms | Redis | Real-time inference, prediction serving |
+| **Offline** | Trino / Delta Lake (`feat_*` tables) | Training data retrieval, point-in-time joins |
+| **Online** | Redis | Real-time inference, prediction serving |
 
 ```
 Batch pipeline (5_compute_features.py)
@@ -166,33 +166,8 @@ Not served online. Used exclusively for supervised learning dataset construction
 - **Serialisation:** Feast default (protobuf)
 - **TTL:** Controlled per FeatureView (vitals/labs: 1 year, demographics: 10 years)
 
-### Write paths
-
-**Batch path (hourly/scheduled):**
-```bash
-feast apply          # register feature definitions
-feast materialize    # read feat_* Trino tables → write to Redis
-```
-
-**Stream path (continuous, overrides batch):**
-```
-Kafka: patient-features-24h
-    → 7_feature_pipeline.py
-    → store.push("patient_vitals", df)
-    → Redis: patient_vitals online store
-```
-
-The stream path **overrides** the batch vitals features with the most recent 24h rolling window values, providing fresher data for recently active patients.
-
 ---
 
-## Feast Configuration
-
-### Entity
-
-```python
-patient = Entity(name="patient", join_keys=["patient_id"])
-```
 
 ### FeatureViews
 
@@ -211,29 +186,6 @@ patient = Entity(name="patient", join_keys=["patient_id"])
 |---|---|---|
 | `patient_ml_features_v1` | All 5 online views | Real-time inference |
 | `patient_training_v1` | All 5 online + labels | Training dataset retrieval |
-
-### Retrieval example
-
-> **Path note:** When running from the host, the repo path is `config/feature_store` (relative to the project root). Inside the Airflow container, the path is `/opt/airflow/feature_store` (controlled by the `FEAST_REPO_DIR` env var).
-
-```python
-from feast import FeatureStore
-
-# Host (running via uv run scripts/main/query_featurestore.py)
-store = FeatureStore(repo_path="config/feature_store")
-
-# Online (real-time inference)
-features = store.get_online_features(
-    features=["patient_vitals:heart_rate_mean", "patient_demographics:age"],
-    entity_rows=[{"patient_id": "P001"}],
-).to_dict()
-
-# Offline (training)
-training_df = store.get_historical_features(
-    entity_df=entity_df_with_timestamps,
-    features=store.get_feature_service("patient_training_v1"),
-).to_df()
-```
 
 ---
 
