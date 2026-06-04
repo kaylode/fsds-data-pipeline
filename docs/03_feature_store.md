@@ -5,9 +5,10 @@
 The feature store is built on **Feast** and provides two complementary serving paths:
 
 | Path  | Source | Use case |
-|---|---|---|---|
+|---|---|---|
 | **Offline** | Trino / Delta Lake (`feat_*` tables) | Training data retrieval, point-in-time joins |
 | **Online** | Redis | Real-time inference, prediction serving |
+
 
 ```
 Batch pipeline (5_compute_features.py)
