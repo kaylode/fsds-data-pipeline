@@ -10,7 +10,7 @@ See [./docs](docs) for detailed documentations of the project. This is my submis
 
 ## Architecture
 
-```
+<!-- ```
 ┌─────────────────────────────── DATA SOURCES ──────────────────────────────────┐
 │  1a. EHR Generator → patients / wards / visits / events (Parquet)             │
 │  1b. Stream Producer → infinite loop → Kafka: patient-events                  │
@@ -60,7 +60,9 @@ See [./docs](docs) for detailed documentations of the project. This is my submis
 
 Metadata Governance: DataHub (lineage + catalogue)
 Orchestration:       Apache Airflow (2 DAGs: ehr_data_pipeline + datahub_metadata_ingestion)
-```
+``` -->
+
+![Architecture Diagram](artifacts/pipeline_diagram.png)
 
 See [`docs/`](docs/) for detailed layer designs, schemas, and feature store documentation.
 See [`docs/00_installation.md`](docs/00_installation.md) for full installation and setup instructions.
