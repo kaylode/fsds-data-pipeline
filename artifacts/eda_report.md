@@ -51,3 +51,8 @@ A 2.0% duplication rate was injected into the offline `events` fact logs to test
 * **Unique Events**: 150,000
 * **Duplicate Rows Injected**: 3,000 (1.96% duplicate rate)
 
+---
+
+## 3. Visualizations
+
+![EDA Report Charts](eda_report.png)

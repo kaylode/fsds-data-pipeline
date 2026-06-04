@@ -221,6 +221,11 @@ A 2.0% duplication rate was injected into the offline `events` fact logs to test
 * **Unique Events**: {offline_res['unique_events']:,}
 * **Duplicate Rows Injected**: {offline_res['duplicate_count']:,} ({offline_res['duplicate_rate']:.2f}% duplicate rate)
 
+---
+
+## 3. Visualizations
+
+![EDA Report Charts](eda_report.png)
 """
     
     with open(output_path, "w", encoding="utf-8") as f:
@@ -229,109 +234,53 @@ A 2.0% duplication rate was injected into the offline `events` fact logs to test
     logger.info(f"Saved markdown report to: {output_path}")
     print(md_content)
 
-def generate_html_report(figs, md_path, html_path):
-    logger.info("Compiling interactive HTML report...")
-    
-    # Read markdown text to render it directly into HTML
-    with open(md_path, "r", encoding="utf-8") as f:
-        md_text = f.read()
-        
-    # Translate simple markdown tags to HTML structure
-    html_desc = md_text.replace("\n", "<br>").replace("## ", "<h2>").replace("### ", "<h3>").replace("# ", "<h1>").replace("---", "<hr>")
-    
-    # Convert Plotly figures to HTML strings
-    ward_div = figs["ward_skew"].to_html(full_html=False, include_plotlyjs='cdn')
-    event_div = figs["event_distribution"].to_html(full_html=False, include_plotlyjs=False)
-    evol_div = figs["schema_evolution"].to_html(full_html=False, include_plotlyjs=False)
-    
-    html_content = f"""
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <title>EHR Synthetic Dataset Quality & EDA Report</title>
-        <style>
-            body {{
-                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                margin: 40px;
-                background-color: #f7f9fc;
-                color: #333;
-            }}
-            .container {{
-                max-width: 1200px;
-                margin: 0 auto;
-                background-color: #fff;
-                padding: 30px;
-                border-radius: 12px;
-                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
-            }}
-            h1, h2, h3 {{
-                color: #2c3e50;
-            }}
-            h1 {{
-                border-bottom: 2px solid #3498db;
-                padding-bottom: 10px;
-            }}
-            h2 {{
-                margin-top: 30px;
-                border-bottom: 1px solid #ddd;
-                padding-bottom: 5px;
-            }}
-            table {{
-                width: 100%;
-                border-collapse: collapse;
-                margin: 20px 0;
-            }}
-            table, th, td {{
-                border: 1px solid #ddd;
-            }}
-            th, td {{
-                padding: 12px;
-                text-align: left;
-            }}
-            th {{
-                background-color: #f2f2f2;
-                color: #2c3e50;
-            }}
-            tr:nth-child(even) {{
-                background-color: #f9f9f9;
-            }}
-            .chart-wrapper {{
-                margin: 40px 0;
-                background: #fdfdfd;
-                border: 1px solid #eaeaea;
-                padding: 15px;
-                border-radius: 8px;
-            }}
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            {html_desc}
-            
-            <hr>
-            <h1>Interactive Data Quality Visualizations</h1>
-            
-            <div class="chart-wrapper">
-                {ward_div}
-            </div>
-            
-            <div class="chart-wrapper">
-                {event_div}
-            </div>
-            
-            <div class="chart-wrapper">
-                {evol_div}
-            </div>
-        </div>
-    </body>
-    </html>
-    """
-    
-    with open(html_path, "w", encoding="utf-8") as f:
-        f.write(html_content)
-        
-    logger.info(f"Interactive HTML EDA report generated successfully at: {html_path}")
+
+def generate_png_report(figs, png_path):
+    logger.info("Composing combined PNG report...")
+
+    from plotly.subplots import make_subplots
+    import plotly.graph_objects as go
+
+    # Build a 3-row combined figure
+    combined = make_subplots(
+        rows=3, cols=1,
+        subplot_titles=[
+            "Patient Visit Distribution Across Wards (Skewness)",
+            "Distribution of Clinical Events",
+            "Schema Evolution: Severity Level Presence Over Admission Months",
+        ],
+        vertical_spacing=0.10,
+        specs=[[{"type": "domain"}], [{"type": "xy"}], [{"type": "xy"}]],
+    )
+
+    # Row 1 — Pie (ward skew): copy traces from the original figure
+    for trace in figs["ward_skew"].data:
+        combined.add_trace(trace, row=1, col=1)
+
+    # Row 2 — Bar (event distribution)
+    for trace in figs["event_distribution"].data:
+        combined.add_trace(trace, row=2, col=1)
+
+    # Row 3 — Stacked bar (schema evolution)
+    for trace in figs["schema_evolution"].data:
+        combined.add_trace(trace, row=3, col=1)
+
+    combined.update_layout(
+        height=1800,
+        width=1400,
+        title_text="EHR Synthetic Dataset — EDA Report",
+        title_font_size=22,
+        paper_bgcolor="white",
+        plot_bgcolor="white",
+        showlegend=True,
+        barmode="stack",
+        font=dict(family="Arial", size=13),
+        margin=dict(t=100, b=60, l=80, r=80),
+    )
+
+    combined.write_image(png_path, scale=2)
+    logger.info(f"PNG EDA report saved to: {png_path}")
+
 
 def main():
     parser = argparse.ArgumentParser(description="EHR Dataset EDA Reporter")
@@ -358,17 +307,17 @@ def main():
     
     # 1. Analyze offline data
     offline_res = analyze_offline_data(data_dir)
-    
+
     # 2. Generate markdown text report
     md_path = os.path.join(output_dir, "eda_report.md")
     generate_markdown_report(offline_res, md_path)
-    
+
     # 3. Generate Plotly figures
     figs = generate_plotly_figures(offline_res)
-    
-    # 4. Generate interactive HTML report
-    html_path = os.path.join(output_dir, "eda_report.html")
-    generate_html_report(figs, md_path, html_path)
+
+    # 4. Generate combined PNG report
+    png_path = os.path.join(output_dir, "eda_report.png")
+    generate_png_report(figs, png_path)
 
 if __name__ == "__main__":
     main()
