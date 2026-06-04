@@ -1,10 +1,12 @@
-# EHR Lakehouse & Feature Store
+# Data Pipeline for Electronic Health Records
 
 > A production-grade **Medallion Data Lakehouse** with a **Real-Time ML Feature Store**, built entirely on synthetic Electronic Health Records (EHR). The system ingests raw clinical data from both batch (Parquet files) and stream (Kafka) sources, applies a three-layer medallion transformation (Bronze → Silver → Gold) using Apache Spark and PyFlink, and materialises ML-ready patient features into an offline (Trino/Delta Lake) and online (Redis) Feast feature store. Metadata governance is handled end-to-end by DataHub, with pipeline orchestration via Apache Airflow. The dataset represents ~1,000 synthetic patients across 5 clinical event types (vitals, labs, medications, diagnoses, ward events), covering admissions, discharges, and longitudinal clinical measurements.
 >
 > All services run **rootless** via **Podman** (no Docker daemon, no root required) using `network_mode: host` and **uv** as package manager.
 
 ---
+
+See [./docs](docs) for detailed documentations of the project. This is my submission for [FSDS course](https://fullstackdatascience.com/) K9-EDAI-1.
 
 ## Architecture
 
