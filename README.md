@@ -154,18 +154,6 @@ make query-lakehouse      # validate all Bronze / Silver / Gold tables in Trino
 make query-featurestore   # test online feature retrieval from Feast
 ```
 
-### UI Consoles
-
-| UI | URL | Credentials |
-|---|---|---|
-| **Airflow** | http://localhost:8082 | `airflow` / `airflow` |
-| **DataHub** | http://localhost:9002 | `datahub` / `datahub` |
-| **Trino** | http://localhost:8090 | — |
-| **MinIO Console** | http://localhost:9001 | `minioadmin` / `minioadmin` |
-| **Flink Dashboard** | http://localhost:8087 | — |
-| **Spark Master UI** | http://localhost:8089 | — |
-| **Redpanda Console** | http://localhost:8086 | — |
-| **pgweb** | http://localhost:8085 | — |
 
 ---
 
