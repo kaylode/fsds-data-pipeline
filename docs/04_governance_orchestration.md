@@ -67,26 +67,6 @@ Crawls all data sources and pushes catalogue metadata to DataHub GMS.
 
 ---
 
-### Pipeline Run Metadata
-
-Each task in `ehr_data_pipeline` records a row to `ehr_pipeline_runs` (PostgreSQL, Airflow DB):
-
-| Column | Description |
-|---|---|
-| `run_id` | UUID for this specific task run |
-| `dag_id` | DAG identifier |
-| `task_id` | Task identifier |
-| `airflow_run_id` | Airflow run ID |
-| `start_ts` | Task start timestamp (UTC) |
-| `end_ts` | Task end timestamp |
-| `status` | `RUNNING` / `SUCCESS` / `FAILED` |
-| `input_row_count` | Rows read (where applicable) |
-| `output_row_count` | Rows written (where applicable) |
-| `error_msg` | First 1000 chars of error if failed |
-
-Browse via pgweb at http://localhost:8085.
-
----
 
 ### Airflow DAG — Task Run History
 
@@ -100,25 +80,15 @@ Browse via pgweb at http://localhost:8085.
 
 DataHub provides the central data catalogue, automated lineage tracking, and manual metadata enrichment for the EHR pipeline.
 
-### What DataHub tracks
-
-| Aspect | How populated |
-|---|---|
-| **Dataset catalogue** | `datahub_metadata_ingestion` DAG (auto-crawl) |
-| **Column schemas** | Trino/Kafka/Postgres source crawl |
-| **Lineage** | Emitted by each Airflow task via DataHub REST emitter |
-| **Quality assertions** | Emitted by `validate_bronze` task |
-| **Ownership** | `scripts/misc/datahub_enrich_metadata.py` |
-| **Tags** | Enrichment script (e.g. `bronze`, `pii`, `ml-ready`) |
-| **Glossary Terms** | Enrichment script (e.g. `PatientIdentifier`, `ClinicalEvent`) |
-| **Domain** | Enrichment script (`healthcare`, `machine-learning`) |
-| **Documentation** | Enrichment script (per-dataset descriptions) |
-
 ---
 
 ### Lineage Graph
 
 The lineage graph is automatically built by the `ehr_data_pipeline` DAG. Each task emits `DataFlow`, `DataJob`, and `UpstreamLineage` metadata change proposals (MCPs) via the DataHub REST emitter.
+
+**Pipeline lineage graph (ehr_data_pipeline → feat_* → online store):**
+
+![DataHub — ehr_data_pipeline Lineage](../artifacts/datahub_lineage.png)
 
 **Batch lineage chain:**
 ```
@@ -182,41 +152,15 @@ The enrichment script (`scripts/misc/datahub_enrich_metadata.py`) sets:
 
 ---
 
-### DataHub Screenshots
+
 
 **Registered data sources (postgres, kafka, hive, trino, minio):**
 
 ![DataHub — Manage Data Sources](../artifacts/datahub_source.png)
 
-**Pipeline lineage graph (ehr_data_pipeline → feat_* → online store):**
 
-![DataHub — ehr_data_pipeline Lineage](../artifacts/datahub_lineage.png)
 
 **Dataset schema view:**
 
 ![DataHub — Dataset Schema](../artifacts/datahub_schema.png)
 
----
-
-## Architecture Summary
-
-```
-                    ┌─────────────────────┐
-                    │    Apache Airflow    │
-                    │  (Scheduling / DAGs) │
-                    └──────────┬──────────┘
-                               │ triggers & monitors
-                    ┌──────────▼──────────┐
-                    │   EHR Pipeline      │
-                    │  (Spark / Flink /   │
-                    │   Feast / Kafka)    │
-                    └──────────┬──────────┘
-                               │ emits lineage MCPs
-                    ┌──────────▼──────────┐
-                    │      DataHub        │
-                    │  (Catalogue /       │
-                    │   Lineage / QA)     │
-                    └─────────────────────┘
-```
-
-Both tools are integrated: Airflow tasks emit DataHub lineage events in real time, and the `datahub_metadata_ingestion` DAG runs on a schedule to keep the catalogue fresh.
