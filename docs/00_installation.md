@@ -153,6 +153,10 @@ make ps
 
 You should see all containers with status `Up`:
 
+
+![image](../artifacts/containers.png)
+
+
 | Container | Role |
 |---|---|
 | `kafka` | Message broker (KRaft mode) |
