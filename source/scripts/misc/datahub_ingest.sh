@@ -14,7 +14,7 @@ fi
 export PODMAN="${HOME}/bin/podman"
 export CONTAINERS_CONF="$WORKSPACE_DIR/.tmp/config/containers/containers.conf"
 export CONTAINERS_STORAGE_CONF="$WORKSPACE_DIR/.tmp/config/containers/storage.conf"
-export XDG_RUNTIME_DIR="$WORKSPACE_DIR/.tmp/run"
+export XDG_RUNTIME_DIR="/tmp/fsds-run-$USER"
 
 INGEST_TIMEOUT="${DATAHUB_INGEST_TIMEOUT:-120}"
 RECIPES="/datahub-recipes"

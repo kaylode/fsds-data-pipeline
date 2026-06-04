@@ -15,7 +15,7 @@ TMP_DIR="$WORKSPACE_DIR/.tmp/installer"
 # Ensure directories exist
 mkdir -p "$BIN_DIR"
 mkdir -p "$TMP_DIR"
-mkdir -p "$WORKSPACE_DIR/.tmp/data" "$WORKSPACE_DIR/.tmp/runroot" "$WORKSPACE_DIR/.tmp/config/containers"
+mkdir -p "$WORKSPACE_DIR/.tmp/data" "$WORKSPACE_DIR/.tmp/runroot" "$WORKSPACE_DIR/.tmp/config/containers" "$WORKSPACE_DIR/.tmp/run" "$WORKSPACE_DIR/.tmp/cache"
 
 cd "$TMP_DIR"
 
@@ -40,12 +40,15 @@ chmod +x "$BIN_DIR"/podman "$BIN_DIR"/crun "$BIN_DIR"/conmon "$BIN_DIR"/fuse-ove
 echo "⚙️ Writing custom rootless configuration files..."
 
 # Generate custom storage.conf
-# Store runtime and overlay layers in the local workspace directory
+# Store runtime in /tmp (wiped on reboot to avoid boot ID mismatch errors) and overlay layers in the local /var/tmp directory
+mkdir -p "/tmp/fsds-runroot-$USER" "/var/tmp/$USER/fsds/storage"
+chmod 700 "/tmp/fsds-runroot-$USER" "/var/tmp/$USER/fsds/storage"
+
 cat <<EOF > "$WORKSPACE_DIR/.tmp/config/containers/storage.conf"
 [storage]
 driver = "overlay"
-runroot = "$WORKSPACE_DIR/.tmp/runroot"
-graphroot = "$WORKSPACE_DIR/.tmp/storage"
+runroot = "/tmp/fsds-runroot-$USER"
+graphroot = "/var/tmp/$USER/fsds/storage"
 
 [storage.options]
 additionalimagestores = []
@@ -78,10 +81,22 @@ crun = [
 ]
 EOF
 
+# Generate default policy.json to allow image pulling without global system policy
+cat <<EOF > "$WORKSPACE_DIR/.tmp/config/containers/policy.json"
+{
+    "default": [
+        {
+            "type": "insecureAcceptAnything"
+        }
+    ]
+}
+EOF
+
 # Also sync them to user's home configuration directory for CLI convenience
 mkdir -p "$HOME/.config/containers"
 cp "$WORKSPACE_DIR/.tmp/config/containers/storage.conf" "$HOME/.config/containers/storage.conf"
 cp "$WORKSPACE_DIR/.tmp/config/containers/containers.conf" "$HOME/.config/containers/containers.conf"
+cp "$WORKSPACE_DIR/.tmp/config/containers/policy.json" "$HOME/.config/containers/policy.json"
 
 # Clean up installer directory
 rm -rf "$TMP_DIR"

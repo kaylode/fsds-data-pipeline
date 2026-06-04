@@ -261,3 +261,111 @@ def get_trino_connection():
         port=TRINO_PORT,
         user=TRINO_USER,
     )
+
+
+def run_data_assertions(dataset_name: str, spark_df, dataset_type: str = "silver"):
+    """
+    Runs Great Expectations validations on a PySpark DataFrame and emits the assertions and results to DataHub GMS.
+    """
+    import os
+    import time
+    from loguru import logger
+    from great_expectations.dataset import SparkDFDataset
+    from datahub.emitter.rest_emitter import DatahubRestEmitter
+    from datahub.emitter.mce_builder import make_dataset_urn
+    from datahub.emitter.mcp import MetadataChangeProposalWrapper
+    from datahub.metadata.schema_classes import (
+        AssertionInfoClass,
+        AssertionRunEventClass,
+        AssertionResultClass,
+        AssertionRunStatusClass,
+        AssertionResultTypeClass,
+        AssertionTypeClass,
+        DatasetAssertionInfoClass
+    )
+
+    logger.info(f"Running data quality assertions on {dataset_name}...")
+    
+    # Wrap Spark DataFrame
+    ge_df = SparkDFDataset(spark_df)
+    
+    # Run validations and collect results
+    results = []
+    
+    # Example validations based on dataset_name
+    if dataset_name == "stg_patients":
+        results.append(("patient_id_unique", ge_df.expect_column_values_to_be_unique("patient_id")))
+        results.append(("patient_id_not_null", ge_df.expect_column_values_to_not_be_null("patient_id")))
+        results.append(("country_uppercase", ge_df.expect_column_values_to_match_regex("country", r"^[A-Z]{2,3}$")))
+    elif dataset_name == "stg_wards":
+        results.append(("ward_id_unique", ge_df.expect_column_values_to_be_unique("ward_id")))
+        results.append(("ward_id_not_null", ge_df.expect_column_values_to_not_be_null("ward_id")))
+    elif dataset_name == "stg_visits":
+        results.append(("visit_id_unique", ge_df.expect_column_values_to_be_unique("visit_id")))
+        results.append(("admission_timestamp_not_null", ge_df.expect_column_values_to_not_be_null("admission_timestamp")))
+    elif dataset_name == "stg_event_metadata":
+        results.append(("event_type_id_unique", ge_df.expect_column_values_to_be_unique("event_type_id")))
+        results.append(("event_type_id_not_null", ge_df.expect_column_values_to_not_be_null("event_type_id")))
+    elif dataset_name == "stg_events":
+        results.append(("event_id_unique", ge_df.expect_column_values_to_be_unique("event_id")))
+        results.append(("event_type_valid", ge_df.expect_column_values_to_be_in_set("event_type", ["vital", "lab", "medication", "diagnosis"])))
+
+    # Connect to DataHub GMS
+    datahub_gms_port = os.getenv("DATAHUB_GMS_PORT", "8088")
+    datahub_gms_url = f"http://127.0.0.1:{datahub_gms_port}"
+    
+    try:
+        emitter = DatahubRestEmitter(gms_server=datahub_gms_url)
+        dataset_urn = make_dataset_urn(platform="trino", name=f"delta.{dataset_type}.{dataset_name}", env="PROD")
+        
+        for assert_id, res in results:
+            success = res["success"]
+            # Create a unique assertion URN
+            assertion_urn = f"urn:li:assertion:{dataset_type}_{dataset_name}_{assert_id}"
+            
+            # 1. Emit AssertionInfo
+            column_name = res.expectation_config.kwargs.get("column")
+            assertion_info = AssertionInfoClass(
+                type=AssertionTypeClass.DATASET,
+                datasetAssertionInfo=DatasetAssertionInfoClass(
+                    dataset=dataset_urn,
+                    scope="DATASET_COLUMN" if column_name else "DATASET_ROW",
+                    fields=[column_name] if column_name else [],
+                    operator="EQUAL"
+                )
+            )
+            
+            emitter.emit(
+                MetadataChangeProposalWrapper(
+                    entityUrn=assertion_urn,
+                    aspect=assertion_info
+                )
+            )
+            
+            # 2. Emit AssertionRunEvent
+            run_event = AssertionRunEventClass(
+                timestampMillis=int(time.time() * 1000),
+                assertionUrn=assertion_urn,
+                status=AssertionRunStatusClass.COMPLETE,
+                result=AssertionResultClass(
+                    type=AssertionResultTypeClass.SUCCESS if success else AssertionResultTypeClass.FAILURE,
+                    actualProperties={
+                        "observed_value": str(res.result.get("observed_value")),
+                        "unexpected_count": str(res.result.get("unexpected_count", 0)),
+                        "unexpected_percent": str(res.result.get("unexpected_percent", 0.0))
+                    }
+                )
+            )
+            
+            emitter.emit(
+                MetadataChangeProposalWrapper(
+                    entityUrn=assertion_urn,
+                    aspect=run_event
+                )
+            )
+            
+            logger.info(f"  Assertion '{assert_id}': {'PASSED' if success else 'FAILED'}")
+            
+    except Exception as e:
+        logger.warning(f"Failed to emit assertions to DataHub: {e}")
+

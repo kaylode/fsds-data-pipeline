@@ -3,7 +3,7 @@
 export PATH := $(HOME)/bin:$(HOME)/.local/bin:$(PATH)
 export CONTAINERS_CONF := $(shell pwd)/../.tmp/config/containers/containers.conf
 export CONTAINERS_STORAGE_CONF := $(shell pwd)/../.tmp/config/containers/storage.conf
-export XDG_RUNTIME_DIR := $(shell pwd)/../.tmp/run
+export XDG_RUNTIME_DIR := /tmp/fsds-run-$(USER)
 
 # ─── Infrastructure ───────────────────────────────────────────────────────────
 
@@ -75,7 +75,7 @@ clean:
 
 # Download and install the full native Podman server package statically without root
 install-podman:
-	@bash scripts/podman/install_podman_static.sh
+	@bash scripts/installation/install_podman_static.sh
 
 # Build the custom Spark image with Python 3.12 (needed to match host Python version).
 # Uses podman run+exec+commit instead of podman build to avoid lgetxattr errors

@@ -3,13 +3,6 @@
 #
 # Builds localhost/airflow-custom:latest by running the base Airflow container,
 # installing dependencies via pip install inside it via exec, then committing to a new image.
-#
-# WHY NOT `podman build`:
-#   Rootless Podman with fuse-overlayfs calls lgetxattr() on every file in
-#   the layer when committing a RUN step. The Apache Airflow base image has
-#   /var/cache/apt/archives/partial with a security.capability xattr that
-#   cannot be read without CAP_SYS_ADMIN, causing "permission denied".
-#   Using podman exec + podman export/import avoids this layer-snapshotting entirely.
 
 set -euo pipefail
 
@@ -17,9 +10,11 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PROJECT_ROOT="$( cd "$SCRIPT_DIR/../.." && pwd )"
 WORKSPACE_DIR="$( cd "$PROJECT_ROOT/.." && pwd )"
 
+export PODMAN_IGNORE_CGROUPSV1_WARNING=1
 export CONTAINERS_CONF="${WORKSPACE_DIR}/.tmp/config/containers/containers.conf"
 export CONTAINERS_STORAGE_CONF="${WORKSPACE_DIR}/.tmp/config/containers/storage.conf"
-export XDG_RUNTIME_DIR="${WORKSPACE_DIR}/.tmp/run"
+export XDG_RUNTIME_DIR="/tmp/fsds-run-$USER"
+mkdir -p -m 700 "$XDG_RUNTIME_DIR"
 export PATH="${HOME}/bin:${HOME}/.local/bin:${PATH}"
 
 # Locate podman binary
@@ -42,37 +37,37 @@ $PODMAN rm -f "$CONTAINER_NAME" 2>/dev/null || true
 echo "🚀 Starting temporary container from base Airflow image..."
 $PODMAN run -d \
     --name "$CONTAINER_NAME" \
-    --user root \
+    --user 50000:0 \
+    --uidmap 50000:0:1 \
+    --gidmap 0:0:1 \
+    -v "$PROJECT_ROOT":/workspace:ro \
     --entrypoint /bin/bash \
     "$BASE_IMAGE" \
     -c "sleep 3600"
 
 echo "📦 Installing custom Python packages inside container..."
-$PODMAN exec -u root "$CONTAINER_NAME" bash -c '
+$PODMAN exec "$CONTAINER_NAME" bash -c '
     set -e
-    /home/airflow/.local/bin/pip install --no-cache-dir \
+    /home/airflow/.local/bin/pip install --upgrade uv
+    cd /workspace
+    /home/airflow/.local/bin/uv pip install --no-cache-dir \
         "great_expectations==0.18.19" \
-        "acryl-datahub[airflow]" \
+        "acryl-datahub[airflow,postgres,kafka,trino,feast]" \
         "acryl-datahub-airflow-plugin" \
         "pandas" \
         "sqlglot" \
         "python-dotenv" \
-        "feast[trino]" || \
-    /usr/local/bin/python -m pip install --no-cache-dir \
-        "great_expectations==0.18.19" \
-        "acryl-datahub[airflow]" \
-        "acryl-datahub-airflow-plugin" \
-        "pandas" \
-        "sqlglot" \
-        "python-dotenv" \
-        "feast[trino]"
+        "feast[trino]" \
+        "redis" \
+        "feast-trino" \
+        "minio" \
+        "loguru" \
+        "deltalake" \
+        "trino" \
+        "pyspark==3.5.6" \
+        "confluent-kafka" \
+        "apache-flink==2.2.0"
 
-
-
-    echo "  → scrubbing apt cache (security.capability xattrs block rootless podman commit)..."
-    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* || true
-    rm -rf /var/cache/apt/archives || true
-    
     echo "  ✅ Custom dependencies installed successfully."
 '
 
@@ -111,7 +106,7 @@ $PODMAN export "$CONTAINER_NAME" | $PODMAN import \
     --change 'ENV AIRFLOW__CORE__LOAD_EXAMPLES=false' \
     --change 'ENV AIRFLOW_PIP_VERSION=24.2' \
     --change 'ENV AIRFLOW_UV_VERSION=0.4.1' \
-    --change 'ENV AIRFLOW_USE_UV=false' \
+    --change 'ENV AIRFLOW_USE_UV=true' \
     --change 'ENV BUILD_ID=' \
     --change 'ENV COMMIT_SHA=35087d7d10714130cc3e9e9730e34b07fc56938d' \
     - \

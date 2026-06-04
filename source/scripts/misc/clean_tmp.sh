@@ -10,7 +10,7 @@ export PATH="$HOME/bin:$HOME/.local/bin:$PATH"
 export PODMAN="${PODMAN:-$HOME/bin/podman}"
 export CONTAINERS_CONF="$TMP_DIR/config/containers/containers.conf"
 export CONTAINERS_STORAGE_CONF="$TMP_DIR/config/containers/storage.conf"
-export XDG_RUNTIME_DIR="$TMP_DIR/run"
+export XDG_RUNTIME_DIR="/tmp/fsds-run-$USER"
 
 FORCE=false
 if [ "$1" == "-f" ]; then
@@ -19,11 +19,12 @@ fi
 
 if [ "$FORCE" = false ]; then
     echo "⚠️  Warning: This will:"
-    echo "     • Stop all running containers"
-    echo "     • Wipe MinIO (Delta Lake), PostgreSQL, Redis, and Kafka data
-     • Delete generated synthetic EHR data and ML datasets
-     • Delete the Feast feature store registry (registry.db)"
+    echo "     • Stop all running containers (core, Airflow, and DataHub)"
+    echo "     • Wipe MinIO (Delta Lake), PostgreSQL, Redis, and Kafka data"
+    echo "     • Delete generated synthetic EHR data and ML datasets"
+    echo "     • Delete the Feast feature store registry (registry.db)"
     echo "     • Reset Podman storage"
+    echo "     • Wipe Airflow pipeline logs"
     echo "     • flink-lib/ (connector JARs) will be preserved"
     read -p "Are you sure you want to proceed? (y/N) " -n 1 -r
     echo
@@ -39,6 +40,9 @@ CONTAINERS=(
     spark-worker spark-master
     trino hive-metastore
     minio redis postgres kafka
+    airflow-webserver airflow-scheduler airflow-init
+    datahub-opensearch datahub-system-update datahub-gms
+    datahub-restore-indices datahub-actions datahub-frontend-react
 )
 echo "🛑 Stopping containers..."
 for c in "${CONTAINERS[@]}"; do
@@ -71,10 +75,12 @@ for dir in "${DATA_DIRS[@]}"; do
     fi
 done
 
-# 4. Wipe generated pipeline data (synthetic EHR, ML datasets, Feast registry)
-echo "🗑️  Wiping generated data and feature store registry..."
+# 4. Wipe generated pipeline data (synthetic EHR, ML datasets, Feast registry, Airflow logs)
+echo "🗑️  Wiping generated data, Airflow logs, and feature store registry..."
 rm -rf "$PROJECT_ROOT/data/synthetic"
 rm -rf "$PROJECT_ROOT/data/ml"
 rm -f  "$PROJECT_ROOT/config/feature_store/data/registry.db"
+rm -rf "$PROJECT_ROOT/config/orchestration/logs"
+mkdir -p "$PROJECT_ROOT/config/orchestration/logs"
 
 echo "✅ Clean complete. Run 'make up' then re-run the pipeline."

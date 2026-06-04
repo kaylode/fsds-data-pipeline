@@ -16,7 +16,7 @@ POSTGRES_USER=${POSTGRES_USER:-postgres}
 POSTGRES_DB=${POSTGRES_DB:-postgres}
 
 # Set XDG_RUNTIME_DIR to the workspace-specific run directory
-export XDG_RUNTIME_DIR="$PROJECT_ROOT/../.tmp/run"
+export XDG_RUNTIME_DIR="/tmp/fsds-run-$USER"
 
 # Function to run psql inside the postgres container
 run_sql() {

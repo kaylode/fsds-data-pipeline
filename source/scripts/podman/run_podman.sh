@@ -61,10 +61,11 @@ source .env
 set +a
 
 # Ensure both podman-compose and podman use the exact same base podman binary and rootless configurations
+export PODMAN_IGNORE_CGROUPSV1_WARNING=1
 export PODMAN="$HOME/bin/podman"
 export CONTAINERS_CONF="$WORKSPACE_DIR/.tmp/config/containers/containers.conf"
 export CONTAINERS_STORAGE_CONF="$WORKSPACE_DIR/.tmp/config/containers/storage.conf"
-export XDG_RUNTIME_DIR="$WORKSPACE_DIR/.tmp/run"
+export XDG_RUNTIME_DIR="/tmp/fsds-run-$USER"
 mkdir -p -m 700 "$XDG_RUNTIME_DIR"
 
 # Configure stack-specific variables

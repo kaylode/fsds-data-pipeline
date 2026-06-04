@@ -128,7 +128,7 @@ def _ensure_run_metadata_table() -> None:
     """Create ehr_pipeline_runs table in the Airflow Postgres DB if absent."""
     from sqlalchemy import create_engine, text
     engine = create_engine(DB_METADATA_CONN)
-    with engine.connect() as conn:
+    with engine.begin() as conn:
         conn.execute(text("""
             CREATE TABLE IF NOT EXISTS ehr_pipeline_runs (
                 run_id           TEXT PRIMARY KEY,
@@ -143,7 +143,6 @@ def _ensure_run_metadata_table() -> None:
                 error_msg        TEXT
             )
         """))
-        conn.commit()
 
 
 def _upsert_run(
@@ -160,7 +159,7 @@ def _upsert_run(
 ) -> None:
     from sqlalchemy import create_engine, text
     engine = create_engine(DB_METADATA_CONN)
-    with engine.connect() as conn:
+    with engine.begin() as conn:
         conn.execute(text("""
             INSERT INTO ehr_pipeline_runs
                 (run_id, dag_id, task_id, airflow_run_id, start_ts, end_ts,
@@ -181,7 +180,6 @@ def _upsert_run(
             "status": status, "input_rows": input_rows,
             "output_rows": output_rows, "error_msg": error_msg,
         })
-        conn.commit()
 
 
 @contextmanager

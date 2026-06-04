@@ -31,7 +31,7 @@ from pyspark.sql import functions as F
 from pyspark.sql.types import DateType
 
 from pyspark.sql import SparkSession
-from utils import build_spark_session, register_tables_in_trino, run_with_spark_submit
+from utils import build_spark_session, register_tables_in_trino, run_with_spark_submit, run_data_assertions
 
 # ── Environment ────────────────────────────────────────────────────────────────
 script_dir   = os.path.dirname(os.path.abspath(__file__))
@@ -94,6 +94,9 @@ def transform_patients(spark: SparkSession) -> int:
     dupes_removed = before_count - after_count
     logger.info(f"  stg_patients: {before_count:,} → {after_count:,} rows (removed {dupes_removed:,} dupes)")
 
+    # Run validations
+    run_data_assertions("stg_patients", df_clean)
+
     (
         df_clean.write
         .format("delta")
@@ -124,6 +127,9 @@ def transform_wards(spark: SparkSession) -> int:
     after_count = df_clean.count()
     logger.info(f"  stg_wards: {before_count:,} → {after_count:,} rows")
 
+    # Run validations
+    run_data_assertions("stg_wards", df_clean)
+
     (
         df_clean.write
         .format("delta")
@@ -151,6 +157,9 @@ def transform_event_metadata(spark: SparkSession) -> int:
 
     after_count = df_clean.count()
     logger.info(f"  stg_event_metadata: {before_count:,} → {after_count:,} rows")
+
+    # Run validations
+    run_data_assertions("stg_event_metadata", df_clean)
 
     (
         df_clean.write
@@ -209,6 +218,9 @@ def transform_visits(spark: SparkSession) -> int:
     after_count = df_clean.count()
     logger.info(f"  stg_visits: {before_count:,} → {after_count:,} rows")
 
+    # Run validations
+    run_data_assertions("stg_visits", df_clean)
+
     (
         df_clean.write
         .format("delta")
@@ -264,6 +276,9 @@ def transform_events(spark: SparkSession) -> int:
     logger.info(f"  stg_events: {before_count:,} → {after_count:,} rows")
     logger.info(f"  Duplicates removed: {dupes_removed:,} ({dupe_pct:.2f}%)")
     logger.info(f"  Unknown event_type rows flagged: {invalid_count:,}")
+
+    # Run validations
+    run_data_assertions("stg_events", df_clean)
 
     (
         df_clean.write

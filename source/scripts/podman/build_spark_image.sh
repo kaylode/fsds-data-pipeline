@@ -17,9 +17,11 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PROJECT_ROOT="$( cd "$SCRIPT_DIR/../.." && pwd )"
 WORKSPACE_DIR="$( cd "$PROJECT_ROOT/.." && pwd )"
 
+export PODMAN_IGNORE_CGROUPSV1_WARNING=1
 export CONTAINERS_CONF="${WORKSPACE_DIR}/.tmp/config/containers/containers.conf"
 export CONTAINERS_STORAGE_CONF="${WORKSPACE_DIR}/.tmp/config/containers/storage.conf"
-export XDG_RUNTIME_DIR="${WORKSPACE_DIR}/.tmp/run"
+export XDG_RUNTIME_DIR="/tmp/fsds-run-$USER"
+mkdir -p -m 700 "$XDG_RUNTIME_DIR"
 export PATH="${HOME}/bin:${HOME}/.local/bin:${PATH}"
 
 # Locate podman binary

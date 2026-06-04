@@ -35,7 +35,7 @@ x-airflow-common:
     # ehr_data_pipeline.py — paths inside the container
     SCRIPTS_DIR: '/opt/airflow/scripts'
     FEAST_REPO_DIR: '/opt/airflow/feature_store'
-    FLINK_REST_URL: '${FLINK_REST_URL:-http://127.0.0.1:8087}'
+    FLINK_REST_URL: 'http://127.0.0.1:${FLINK_REST_PORT:-8095}'
     STREAM_PUSH_TIMEOUT_S: '${STREAM_PUSH_TIMEOUT_S:-60}'
   volumes:
     - ./dags:/opt/airflow/dags

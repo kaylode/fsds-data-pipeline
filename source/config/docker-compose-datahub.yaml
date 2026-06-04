@@ -200,6 +200,7 @@ services:
       - "1000:0:1"
     depends_on:
       - datahub-gms
+    command: ["/bin/sh", "-c", "dockerize -wait $${DATAHUB_GMS_PROTOCOL:-http}://$$DATAHUB_GMS_HOST:$$DATAHUB_GMS_PORT/health -timeout 600s /start_datahub_actions.sh"]
     environment:
       DATAHUB_GMS_HOST: "127.0.0.1"
       DATAHUB_GMS_PORT: "${DATAHUB_GMS_PORT:-8088}"

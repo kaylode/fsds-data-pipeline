@@ -186,9 +186,9 @@ services:
   # Jobs are submitted from the host via: uv run spark-submit --master spark://127.0.0.1:7077
   spark-master:
     image: localhost/spark-3.12:latest
-    build:
-      context: .
-      dockerfile: Dockerfile.spark
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile.spark
     container_name: spark-master
     network_mode: host
     user: "185:185"
@@ -218,9 +218,9 @@ services:
 
   spark-worker:
     image: localhost/spark-3.12:latest
-    build:
-      context: .
-      dockerfile: Dockerfile.spark
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile.spark
     container_name: spark-worker
     network_mode: host
     user: "185:185"

@@ -146,7 +146,7 @@ DATASETS = [
         description="Raw patient demographics ingested from synthetic Parquet files. "
                     "Contains patient_id, country, gender, and date-of-birth. "
                     "No deduplication or type coercion applied at this stage.",
-        owners=["airflow"],
+        owners=["kaylode"],
         tags=["bronze", "ehr", "pii"],
         terms=["PatientIdentifier"],
         domain="healthcare",
@@ -156,7 +156,7 @@ DATASETS = [
         urn=_dataset_urn("trino", "delta.bronze.raw_visits"),
         description="Raw hospital visit records. One row per admission/discharge event. "
                     "Linked to raw_patients via patient_id.",
-        owners=["airflow"],
+        owners=["kaylode"],
         tags=["bronze", "ehr"],
         terms=["HospitalVisit"],
         domain="healthcare",
@@ -166,7 +166,7 @@ DATASETS = [
         urn=_dataset_urn("trino", "delta.bronze.raw_events"),
         description="Raw clinical events (vitals, labs, medications, diagnoses). "
                     "High-cardinality table; may contain duplicate event_ids resolved in silver.",
-        owners=["airflow"],
+        owners=["kaylode"],
         tags=["bronze", "ehr"],
         terms=["ClinicalEvent"],
         domain="healthcare",
@@ -175,7 +175,7 @@ DATASETS = [
     dict(
         urn=_dataset_urn("trino", "delta.bronze.raw_wards"),
         description="Hospital ward reference data (ward_id, ward_name, department).",
-        owners=["airflow"],
+        owners=["kaylode"],
         tags=["bronze", "ehr", "reference"],
         domain="healthcare",
         custom_props={"layer": "bronze", "source": "parquet"},
@@ -183,7 +183,7 @@ DATASETS = [
     dict(
         urn=_dataset_urn("trino", "delta.bronze.raw_event_metadata"),
         description="Reference table mapping event_type_id to human-readable event names and types.",
-        owners=["airflow"],
+        owners=["kaylode"],
         tags=["bronze", "ehr", "reference"],
         domain="healthcare",
         custom_props={"layer": "bronze", "source": "parquet"},
@@ -193,7 +193,7 @@ DATASETS = [
         urn=_dataset_urn("trino", "delta.silver.stg_patients"),
         description="Cleaned and deduplicated patient records. Standardised gender codes, "
                     "validated DOB, null-filtered. Source: delta.bronze.raw_patients.",
-        owners=["airflow"],
+        owners=["kaylode"],
         tags=["silver", "ehr", "pii"],
         terms=["PatientIdentifier"],
         domain="healthcare",
@@ -203,7 +203,7 @@ DATASETS = [
         urn=_dataset_urn("trino", "delta.silver.stg_visits"),
         description="Cleaned visit records with consistent timestamp formats and "
                     "null ward_id records dropped. Source: delta.bronze.raw_visits.",
-        owners=["airflow"],
+        owners=["kaylode"],
         tags=["silver", "ehr"],
         terms=["HospitalVisit"],
         domain="healthcare",
@@ -213,7 +213,7 @@ DATASETS = [
         urn=_dataset_urn("trino", "delta.silver.stg_events"),
         description="Deduplicated and typed clinical events. Duplicate event_ids resolved "
                     "by keeping latest record. Source: delta.bronze.raw_events.",
-        owners=["airflow"],
+        owners=["kaylode"],
         tags=["silver", "ehr"],
         terms=["ClinicalEvent"],
         domain="healthcare",
@@ -222,7 +222,7 @@ DATASETS = [
     dict(
         urn=_dataset_urn("trino", "delta.silver.stg_wards"),
         description="Cleaned ward reference data.",
-        owners=["airflow"],
+        owners=["kaylode"],
         tags=["silver", "ehr", "reference"],
         domain="healthcare",
         custom_props={"layer": "silver"},
@@ -230,7 +230,7 @@ DATASETS = [
     dict(
         urn=_dataset_urn("trino", "delta.silver.stg_event_metadata"),
         description="Cleaned event type reference data.",
-        owners=["airflow"],
+        owners=["kaylode"],
         tags=["silver", "ehr", "reference"],
         domain="healthcare",
         custom_props={"layer": "silver"},
@@ -240,7 +240,7 @@ DATASETS = [
         urn=_dataset_urn("trino", "delta.gold.dim_patient"),
         description="Conformed patient dimension. SCD Type 1. "
                     "Used by all fact tables and ML feature views.",
-        owners=["airflow"],
+        owners=["kaylode"],
         tags=["gold", "ehr", "dimension", "pii"],
         terms=["PatientIdentifier"],
         domain="healthcare",
@@ -249,7 +249,7 @@ DATASETS = [
     dict(
         urn=_dataset_urn("trino", "delta.gold.dim_ward"),
         description="Ward dimension with department groupings.",
-        owners=["airflow"],
+        owners=["kaylode"],
         tags=["gold", "ehr", "dimension", "reference"],
         domain="healthcare",
         custom_props={"layer": "gold"},
@@ -258,7 +258,7 @@ DATASETS = [
         urn=_dataset_urn("trino", "delta.gold.fact_visit"),
         description="Grain: one row per hospital visit. Contains admission/discharge timestamps, "
                     "ward_id FK, and derived length-of-stay in hours.",
-        owners=["airflow"],
+        owners=["kaylode"],
         tags=["gold", "ehr", "fact"],
         terms=["HospitalVisit"],
         domain="healthcare",
@@ -268,7 +268,7 @@ DATASETS = [
         urn=_dataset_urn("trino", "delta.gold.fact_clinical_event"),
         description="Grain: one row per clinical event. Foreign keys to dim_patient, dim_ward. "
                     "Linked to event metadata for typed lookups.",
-        owners=["airflow"],
+        owners=["kaylode"],
         tags=["gold", "ehr", "fact"],
         terms=["ClinicalEvent"],
         domain="healthcare",
@@ -278,7 +278,7 @@ DATASETS = [
         urn=_dataset_urn("trino", "delta.gold.obt_clinical_events"),
         description="One Big Table (OBT): denormalised join of fact_clinical_event with all "
                     "dimension tables. Used as the source for feature engineering.",
-        owners=["airflow"],
+        owners=["kaylode"],
         tags=["gold", "ehr", "obt"],
         domain="healthcare",
         custom_props={"layer": "gold", "type": "obt", "sla": "daily"},
@@ -290,7 +290,7 @@ DATASETS = [
                     "(heart_rate, systolic_bp, diastolic_bp, temperature). "
                     "Stats: mean, min, max, std per patient. "
                     "Served online via Feast → Redis.",
-        owners=["airflow"],
+        owners=["kaylode"],
         tags=["feature", "ehr", "vitals", "ml-ready"],
         terms=["FeatureView"],
         domain="machine-learning",
@@ -301,7 +301,7 @@ DATASETS = [
         description="6-month rolling lab result aggregates "
                     "(glucose, creatinine, wbc, hemoglobin). "
                     "Stats: mean, min, max, std per patient.",
-        owners=["airflow"],
+        owners=["kaylode"],
         tags=["feature", "ehr", "labs", "ml-ready"],
         terms=["FeatureView"],
         domain="machine-learning",
@@ -310,7 +310,7 @@ DATASETS = [
     dict(
         urn=_dataset_urn("trino", "delta.gold.feat_patient_icd_6m"),
         description="6-month ICD-10 chapter diagnosis counts per patient (22 chapters).",
-        owners=["airflow"],
+        owners=["kaylode"],
         tags=["feature", "ehr", "icd10", "ml-ready"],
         terms=["FeatureView"],
         domain="machine-learning",
@@ -320,7 +320,7 @@ DATASETS = [
         urn=_dataset_urn("trino", "delta.gold.feat_patient_medication_6m"),
         description="6-month medication administration counts per patient "
                     "(lisinopril, metformin, amoxicillin, atorvastatin).",
-        owners=["airflow"],
+        owners=["kaylode"],
         tags=["feature", "ehr", "medication", "ml-ready"],
         terms=["FeatureView"],
         domain="machine-learning",
@@ -330,7 +330,7 @@ DATASETS = [
         urn=_dataset_urn("trino", "delta.gold.feat_patient_demographics"),
         description="Static patient demographic features (gender, ethnicity, country, age, "
                     "is_deceased). TTL: 10 years (effectively permanent).",
-        owners=["airflow"],
+        owners=["kaylode"],
         tags=["feature", "ehr", "demographics", "ml-ready", "pii"],
         terms=["FeatureView", "PatientIdentifier"],
         domain="machine-learning",
@@ -341,7 +341,7 @@ DATASETS = [
         description="Training labels per visit: severity_level, is_readmitted_7d, "
                     "has_inpatient_mortality, has_30day_mortality. "
                     "Offline-only (not served in real-time).",
-        owners=["airflow"],
+        owners=["kaylode"],
         tags=["feature", "ehr", "labels", "ml-ready"],
         terms=["FeatureView"],
         domain="machine-learning",
@@ -352,7 +352,7 @@ DATASETS = [
         urn=_dataset_urn("kafka", "patient-events"),
         description="Real-time clinical event stream. Produced by the EHR event simulator. "
                     "Consumed by the Flink streaming processor to compute 24h rolling features.",
-        owners=["airflow"],
+        owners=["kaylode"],
         tags=["streaming", "ehr", "kafka"],
         terms=["ClinicalEvent"],
         domain="healthcare",
@@ -362,7 +362,7 @@ DATASETS = [
         urn=_dataset_urn("kafka", "patient-features-24h"),
         description="24-hour sliding window patient feature aggregates produced by Flink. "
                     "Consumed by the Feast stream push pipeline to update the Redis online store.",
-        owners=["airflow"],
+        owners=["kaylode"],
         tags=["streaming", "feature", "kafka", "ml-ready"],
         terms=["FeatureView"],
         domain="machine-learning",
