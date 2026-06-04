@@ -233,7 +233,7 @@ def transform_fact_clinical_event(spark: SparkSession) -> int:
     )
     
     (
-        df_fact.write
+        df_fact.coalesce(1).write
         .format("delta")
         .mode("overwrite")
         .partitionBy("event_year", "event_month")
@@ -288,7 +288,7 @@ def transform_obt(spark: SparkSession) -> int:
     )
     
     (
-        df_obt.write
+        df_obt.coalesce(1).write
         .format("delta")
         .mode("overwrite")
         .partitionBy("event_year", "event_month")

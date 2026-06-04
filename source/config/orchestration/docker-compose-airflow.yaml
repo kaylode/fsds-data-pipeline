@@ -43,7 +43,7 @@ x-airflow-common:
     - ./plugins:/opt/airflow/plugins
     - ../../data:/opt/data              # Mount generated synthetic Parquet tables
     - ../../scripts/main:/opt/airflow/scripts:ro   # EHR pipeline scripts (2a–7)
-    - ../feature_store:/opt/airflow/feature_store:ro      # Feast repo (feature_store.yaml + feature_definitions.py)
+    - ../feature_store:/opt/airflow/feature_store      # Feast repo (feature_store.yaml + feature_definitions.py)
     - ../../../.tmp/flink-lib:/opt/.tmp/flink-lib:ro
   user: "${AIRFLOW_UID:-50000}:0"
   x-podman.uidmaps:

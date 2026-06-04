@@ -79,6 +79,8 @@ $PODMAN exec "$CONTAINER_NAME" bash -c '
         "confluent-kafka" \
         "apache-flink==2.2.0"
 
+    /home/airflow/.local/bin/pip install --upgrade --no-cache-dir "typing-extensions>=4.11.0"
+
     echo "  ✅ Custom dependencies installed successfully."
 '
 
