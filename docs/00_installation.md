@@ -12,11 +12,6 @@
   ```bash
   curl -LsSf https://astral.sh/uv/install.sh | sh
   ```
-- Ports listed in the [README Port Directory](../README.md#port-directory) must be free. Check with:
-  ```bash
-  make check-ports
-  ```
-
 ---
 
 ## Step 1 — Install Rootless Podman
@@ -36,14 +31,6 @@ This runs [`scripts/installation/install_podman_static.sh`](../scripts/installat
    - `.tmp/config/containers/containers.conf` — sets `cgroupfs` manager and `crun` runtime
    - `.tmp/config/containers/policy.json` — permissive image pull policy
 4. Copies the config files to `~/.config/containers/` for CLI convenience
-
-**Verify the installation:**
-```bash
-podman info
-```
-
-> [!NOTE]
-> If your system already has Podman installed (e.g. via the OS package manager), `make install-podman` will back up the existing binary to `~/bin/podman.bak` before overwriting. You can skip this step if `podman --version` reports ≥ 4.x.
 
 ---
 
@@ -189,21 +176,6 @@ You should see all containers with status `Up`:
 
 ---
 
-## UI Access After Startup
-
-| UI | URL | Credentials |
-|---|---|---|
-| **Airflow** | http://localhost:8082 | `airflow` / `airflow` |
-| **DataHub** | http://localhost:9002 | `datahub` / `datahub` |
-| **Trino** | http://localhost:8090 | — |
-| **MinIO Console** | http://localhost:9001 | `minioadmin` / `minioadmin` |
-| **Flink Dashboard** | http://localhost:8087 | — |
-| **Spark Master UI** | http://localhost:8089 | — |
-| **Redpanda Console** | http://localhost:8086 | — |
-| **pgweb** | http://localhost:8085 | — |
-
----
-
 ## Scripts Reference — `scripts/main/`
 
 Brief description of every script in the main pipeline:
@@ -224,48 +196,3 @@ Brief description of every script in the main pipeline:
 
 ---
 
-## Resetting / Clean Start
-
-```bash
-make clean          # wipes .tmp/ (all container state, Delta tables, Kafka data)
-make down           # stops core containers
-make datahub-down   # stops DataHub containers
-make airflow-down   # stops Airflow containers
-```
-
-After `make clean`, re-run from Step 5 onwards.
-
----
-
-## Troubleshooting
-
-### Port conflicts
-```bash
-make check-ports    # identify which ports are occupied
-make free-ports     # kill the occupying processes
-```
-
-### Container fails to start
-```bash
-make logs           # follow core container logs
-make airflow-logs   # follow Airflow logs
-make datahub-logs   # follow DataHub logs
-```
-
-### Spark job fails with `Connection refused` to MinIO or Trino
-Ensure core services are fully healthy before submitting jobs:
-```bash
-make ps             # check all containers are Up
-```
-
-### Flink job not submitting
-Verify the Flink connector JAR is present:
-```bash
-ls .tmp/flink-lib/
-# Expected: flink-sql-connector-kafka-4.0.0-2.0.jar
-```
-
-If missing, run:
-```bash
-bash scripts/installation/download_jars.sh
-```
