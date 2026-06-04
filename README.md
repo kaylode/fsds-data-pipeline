@@ -11,12 +11,9 @@ See [./docs](docs) for detailed documentations of the project.
 
 ## Key Data Challenges
 
-Building data systems for Electronic Health Records (EHR) introduces unique challenges addressed by this architecture:
-- **Longitudinal Irregularity**: Clinical events (vitals, labs, medications) occur at irregular, sparse intervals. Aggregating these into uniform features (such as 24-hour sliding windows in PyFlink and 6-month historical windows in Spark) requires specialized windowing and state management.
-- **Batch & Stream Integration**: Merging historical batch tables (for model training) with low-latency streaming updates (for real-time inference) within Feast without introducing data drift or leakage.
-- **EHR Schema Normalization**: Designing a Gold-level Medallion layer (Facts, Dimensions, and One-Big-Table formats) from highly denormalized raw patient and visit data while maintaining term consistency.
+Processing longitudinal EHR clinical data introduces non-trivial data quality and engineering challenges. These include handling highly sparse and irregular event frequencies (vitals, labs, medications), resolving heterogeneous input timestamp formats (unix microsecond integers, ISO 8601 strings, and NULLs), dealing with severe ward skewness (85% General Ward), accommodating missing/sparse measurements without breaking downstream consumers, and managing dynamic schema evolution and data drift over time (such as historical NULL severity levels and the sudden hospital-wide post-drift injection of SpO2 vital observations).
 
-See [./docs/05_optimisations](./docs/05_optimisations.md) for optimization considerations for large datasets.
+See [docs/05_optimisations.md](docs/05_optimisations.md) for more details.
 
 ## Architecture
 
