@@ -16,7 +16,6 @@ Metrics Analyzed:
 
 import os
 import argparse
-import json
 import pandas as pd
 import numpy as np
 import plotly.express as px
@@ -34,8 +33,8 @@ def analyze_offline_data(data_dir):
     patients_path = os.path.join(data_dir, "patients.parquet")
     wards_path = os.path.join(data_dir, "wards.parquet")
     meta_path = os.path.join(data_dir, "event_metadata.parquet")
-    visits_path = os.path.join(data_dir, "visits")
-    events_path = os.path.join(data_dir, "events")
+    visits_path = os.path.join(data_dir, "visits.parquet")
+    events_path = os.path.join(data_dir, "events.parquet")
     
     # Read files
     df_patients = pd.read_parquet(patients_path)
@@ -105,61 +104,9 @@ def analyze_offline_data(data_dir):
         "duplicate_rate": duplicate_rate
     }
 
-def analyze_streaming_data(data_dir):
-    logger.info("Loading streaming JSON logs...")
-    stream_path = os.path.join(data_dir, "clinical_event_stream.json")
-    
-    with open(stream_path, "r", encoding="utf-8") as f:
-        stream_records = json.load(f)
-        
-    df_stream = pd.DataFrame(stream_records)
-    logger.info("Analyzing streaming characteristics...")
-    
-    # Parse timestamps
-    df_stream["event_dt"] = pd.to_datetime(df_stream["event_timestamp"])
-    df_stream["created_dt"] = pd.to_datetime(df_stream["created_ts"])
-    
-    # 1. Late Arrivals
-    # Lag in minutes
-    df_stream["lag_mins"] = (df_stream["created_dt"] - df_stream["event_dt"]).dt.total_seconds() / 60
-    # True late arrivals are those delayed by more than 1 minute (excluding minor processing lag)
-    late_arrivals = df_stream[df_stream["lag_mins"] > 1]
-    late_arrival_rate = (len(late_arrivals) / len(df_stream)) * 100
-    avg_lag = late_arrivals["lag_mins"].mean()
-    
-    # 2. Duplicates
-    total_stream = len(df_stream)
-    unique_stream = df_stream["event_id"].nunique()
-    dupe_stream = total_stream - unique_stream
-    dupe_stream_rate = (dupe_stream / total_stream) * 100
-    
-    # 3. Bursts analysis
-    # Group by hour of the day (0 to 23)
-    df_stream["event_hour"] = df_stream["event_dt"].dt.hour
-    df_stream["event_minute"] = df_stream["event_dt"].dt.minute
-    df_stream["time_of_day_str"] = df_stream["event_dt"].dt.strftime("%H:%M")
-    
-    # Let's count events per hour
-    hourly_counts = df_stream["event_hour"].value_counts().sort_index()
-    
-    # Count events per minute of the day for finer granularity (to show 12:00-12:20 and 20:00-20:20 spikes)
-    # Total minutes in day = 1440
-    df_stream["minute_of_day"] = df_stream["event_hour"] * 60 + df_stream["event_minute"]
-    minute_counts = df_stream.groupby("minute_of_day").size().reindex(range(1440), fill_value=0)
-    
-    return {
-        "df_stream": df_stream,
-        "total_stream": total_stream,
-        "unique_stream": unique_stream,
-        "dupe_stream": dupe_stream,
-        "dupe_stream_rate": dupe_stream_rate,
-        "late_arrival_rate": late_arrival_rate,
-        "avg_lag": avg_lag,
-        "hourly_counts": hourly_counts,
-        "minute_counts": minute_counts
-    }
 
-def generate_plotly_figures(offline_res, stream_res):
+
+def generate_plotly_figures(offline_res):
     logger.info("Building Plotly visual elements...")
     figs = {}
     
@@ -211,53 +158,15 @@ def generate_plotly_figures(offline_res, stream_res):
     )
     figs["schema_evolution"] = fig_evol
     
-    # 4. Ingestion Late Arrival lag histogram
-    df_stream = stream_res["df_stream"]
-    late_df = df_stream[df_stream["lag_mins"] > 1]
-    fig_lag = px.histogram(
-        late_df,
-        x="lag_mins",
-        nbins=50,
-        title="Distribution of Ingestion Lag for Late-Arriving Data",
-        labels={"lag_mins": "Ingestion Delay (Minutes)", "count": "Event Count"},
-        color_discrete_sequence=["orange"]
-    )
-    figs["ingestion_lag"] = fig_lag
-    
-    # 5. Stream Burst Traffic over Day
-    min_counts = stream_res["minute_counts"]
-    # Map minutes (0-1439) back to HH:MM format
-    time_labels = [f"{m//60:02d}:{m%60:02d}" for m in range(1440)]
-    fig_burst = go.Figure()
-    fig_burst.add_trace(go.Scatter(
-        x=time_labels,
-        y=min_counts.values,
-        mode='lines',
-        name='Events / Min',
-        line=dict(color='royalblue', width=2),
-        fill='tozeroy',
-        fillcolor='rgba(65, 105, 225, 0.2)'
-    ))
-    # Highlight burst windows
-    fig_burst.add_vrect(x0="12:00", x1="12:20", fillcolor="red", opacity=0.15, layer="below", line_width=0, annotation_text="Shift Change Burst (12:00-12:20)")
-    fig_burst.add_vrect(x0="20:00", x1="20:20", fillcolor="red", opacity=0.15, layer="below", line_width=0, annotation_text="Shift Change Burst (20:00-20:20)")
-    fig_burst.update_layout(
-        title="Real-Time Event Stream Volume Spikes (Traffic Bursts)",
-        xaxis_title="Time of Day",
-        yaxis_title="Observations per Minute",
-        xaxis=dict(tickmode='array', tickvals=['00:00', '04:00', '08:00', '12:00', '16:00', '20:00', '23:59'])
-    )
-    figs["traffic_bursts"] = fig_burst
-    
     return figs
 
-def generate_markdown_report(offline_res, stream_res, output_path):
+def generate_markdown_report(offline_res, output_path):
     logger.info("Generating markdown text report...")
     
     patients = offline_res["df_patients"]
     df_visits = offline_res["df_visits"]
-    null_phones = patients["phone_number"].isnull().sum()
-    null_addrs = patients["address"].isnull().sum()
+    null_deceased = patients["date_of_death"].isnull().sum()
+    null_ethnic = patients["ethnic"].isnull().sum()
     
     md_content = f"""# Exploratory Data Analysis (EDA) Quality Report — EHR Dataset
 
@@ -290,9 +199,9 @@ To test downstream capacity constraints and partition skewness, a heavy bias was
 * **ER_Ward**: {format_percentage(offline_res['ward_counts'].get('ER_Ward', 0), offline_res['cardinality']['Visits (Unique IDs)'])} of total visits.
 
 ### 2.2 Patient Demographic Missing Values (Nulls)
-We allow up to a 5% missing rate on non-critical fields for demographic cleansing:
-* **Missing Phone Numbers**: {format_percentage(null_phones, len(patients))}
-* **Missing Addresses**: {format_percentage(null_addrs, len(patients))}
+Nullable fields in the patients table (expected sparsity):
+* **date_of_death is NULL (alive patients)**: {format_percentage(null_deceased, len(patients))}
+* **ethnic is NULL**: {format_percentage(null_ethnic, len(patients))}
 
 ### 2.3 Event Type Distributions
 Clinical observations are partitioned across 4 distinct types:
@@ -312,26 +221,6 @@ A 2.0% duplication rate was injected into the offline `events` fact logs to test
 * **Unique Events**: {offline_res['unique_events']:,}
 * **Duplicate Rows Injected**: {offline_res['duplicate_count']:,} ({offline_res['duplicate_rate']:.2f}% duplicate rate)
 
----
-
-## 3. Streaming Event Log Statistics
-
-This section summarizes data quality metrics derived from the real-time event log `clinical_event_stream.json`.
-
-### 3.1 Real-Time Ingestion Lag (Late Arrivals)
-Labs and specific diagnostic reports arrive at the system significantly after the clinical event occurs.
-* **Late Arrival Rate (Lag > 1 min)**: {stream_res['late_arrival_rate']:.2f}% of streaming events.
-* **Average Ingestion Delay**: {stream_res['avg_lag']:.1f} minutes.
-
-### 3.2 Streaming Duplication Rate
-Kafka retries and monitor sensor failures are simulated with a 1.5% duplicate rate:
-* **Total Stream Rows**: {stream_res['total_stream']:,}
-* **Duplicate Events**: {stream_res['dupe_stream']:,} ({stream_res['dupe_stream_rate']:.2f}% duplication rate)
-
-### 3.3 Traffic Bursts Analysis
-Peak hour loads (representing nursing shift changes) occur daily at **12:00 - 12:20** and **20:00 - 20:20** where traffic multiplies by a factor of 30.
-* **Baseline volume**: ~100 events / minute.
-* **Peak burst volume**: ~3,000 events / minute.
 """
     
     with open(output_path, "w", encoding="utf-8") as f:
@@ -354,8 +243,6 @@ def generate_html_report(figs, md_path, html_path):
     ward_div = figs["ward_skew"].to_html(full_html=False, include_plotlyjs='cdn')
     event_div = figs["event_distribution"].to_html(full_html=False, include_plotlyjs=False)
     evol_div = figs["schema_evolution"].to_html(full_html=False, include_plotlyjs=False)
-    lag_div = figs["ingestion_lag"].to_html(full_html=False, include_plotlyjs=False)
-    burst_div = figs["traffic_bursts"].to_html(full_html=False, include_plotlyjs=False)
     
     html_content = f"""
     <!DOCTYPE html>
@@ -436,14 +323,6 @@ def generate_html_report(figs, md_path, html_path):
             <div class="chart-wrapper">
                 {evol_div}
             </div>
-            
-            <div class="chart-wrapper">
-                {burst_div}
-            </div>
-            
-            <div class="chart-wrapper">
-                {lag_div}
-            </div>
         </div>
     </body>
     </html>
@@ -459,7 +338,7 @@ def main():
     parser.add_argument("--data-dir", type=str, default=None,
                         help="Path to synthetic dataset directory (defaults to source/data/synthetic)")
     parser.add_argument("--output-dir", type=str, default=None,
-                        help="Path to save report outputs (defaults to data/synthetic)")
+                        help="Path to save report outputs (defaults to source/artifacts)")
                         
     args = parser.parse_args()
     
@@ -473,24 +352,21 @@ def main():
     if args.output_dir:
         output_dir = args.output_dir
     else:
-        output_dir = data_dir
+        output_dir = os.path.abspath(os.path.join(script_dir, "..", "..", "artifacts"))
         
     os.makedirs(output_dir, exist_ok=True)
     
     # 1. Analyze offline data
     offline_res = analyze_offline_data(data_dir)
     
-    # 2. Analyze streaming data
-    stream_res = analyze_streaming_data(data_dir)
-    
-    # 3. Generate markdown text report
+    # 2. Generate markdown text report
     md_path = os.path.join(output_dir, "eda_report.md")
-    generate_markdown_report(offline_res, stream_res, md_path)
+    generate_markdown_report(offline_res, md_path)
     
-    # 4. Generate Plotly figures
-    figs = generate_plotly_figures(offline_res, stream_res)
+    # 3. Generate Plotly figures
+    figs = generate_plotly_figures(offline_res)
     
-    # 5. Generate interactive HTML report
+    # 4. Generate interactive HTML report
     html_path = os.path.join(output_dir, "eda_report.html")
     generate_html_report(figs, md_path, html_path)
 
