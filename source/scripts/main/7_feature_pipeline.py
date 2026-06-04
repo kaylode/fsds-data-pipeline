@@ -215,14 +215,17 @@ def main(skip_full_materialize: bool = False) -> None:
 
     stop_event = threading.Event()
 
-    # SIGTERM (docker stop / kill) → same clean shutdown as Ctrl-C
-    def _on_sigterm(signum, frame):
-        raise KeyboardInterrupt
-    signal.signal(signal.SIGTERM, _on_sigterm)
+    # SIGINT (Ctrl-C) and SIGTERM handler to force immediate shutdown
+    def _on_shutdown(signum, frame):
+        logger.info("Shutdown requested — exiting immediately.")
+        os._exit(0)
+    signal.signal(signal.SIGINT, _on_shutdown)
+    signal.signal(signal.SIGTERM, _on_shutdown)
 
     # 1. One-time initialisation
     feast_apply()
     store = FeatureStore(repo_path=FEATURE_STORE_DIR)
+    store.refresh_registry()
     if skip_full_materialize:
         logger.info("Skipping full materialization (--skip-full-materialize).")
     else:
@@ -244,7 +247,10 @@ def main(skip_full_materialize: bool = False) -> None:
         while True:
             cycle_start = time.time()
             try:
+                store.refresh_registry()
                 feast_materialize_incremental(store)
+            except KeyboardInterrupt:
+                raise
             except Exception as e:
                 logger.exception(f"Materialization error: {e}")
 

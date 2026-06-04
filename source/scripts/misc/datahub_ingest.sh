@@ -66,7 +66,7 @@ echo "  ✓  GMS reachable (HTTP $GMS_STATUS)"
 # Install extra deps into datahub-actions that are not bundled in the image.
 # These are fast (<5 s) and idempotent.
 echo "  ⚙  Installing missing container deps (redis, feast-trino)..."
-"$PODMAN" exec datahub-actions pip install --quiet redis feast-trino 2>&1 \
+"$PODMAN" exec datahub-actions pip install --user --quiet redis feast-trino 2>&1 \
     | grep -vE "^$|already satisfied|Requirement already" || true
 
 ingest "postgres" "$RECIPES/postgres.yaml"
@@ -77,7 +77,42 @@ ingest "kafka"    "$RECIPES/kafka.yaml"
 SKIPPED+=("hive-metastore  (plugin not in datahub-actions; covered by trino)")
 
 ingest "trino"    "$RECIPES/trino.yaml"
-ingest "feast"    "$RECIPES/feast.yaml"
+
+# We copy recipes and feast repo to /tmp inside the container to make them writable
+# and avoid read-only filesystem issues with sqlite registry lockfiles.
+echo "  ⚙  Preparing writable configs inside the container..."
+"$PODMAN" exec datahub-actions sh -c "
+    rm -rf /tmp/feast-repo /tmp/recipes && \
+    cp -r /feast-repo /tmp/feast-repo && \
+    cp -r /datahub-recipes /tmp/recipes && \
+    chmod -R 777 /tmp/feast-repo /tmp/recipes
+"
+
+# Now modify the copied feature_store.yaml inside the container to use file-based offline_store
+# and avoid Trino validation errors (since Trino plugin is not needed for metadata mapping).
+"$PODMAN" exec datahub-actions python3 -c "
+config_path = '/tmp/feast-repo/feature_store.yaml'
+content = open(config_path).read()
+start = content.find('offline_store:')
+end = content.find('online_store:')
+if start != -1 and end != -1:
+    new_content = content[:start] + 'offline_store:\n    type: file\n\n' + content[end:]
+    open(config_path, 'w').write(new_content)
+"
+
+# Also modify the copied feast.yaml recipe inside the container to point to /tmp/feast-repo
+"$PODMAN" exec datahub-actions python3 -c "
+recipe_path = '/tmp/recipes/feast.yaml'
+content = open(recipe_path).read()
+new_content = content.replace('path: \"/feast-repo\"', 'path: \"/tmp/feast-repo\"')
+open(recipe_path, 'w').write(new_content)
+"
+
+# Now ingest using the writable recipe copy
+ingest "feast" "/tmp/recipes/feast.yaml"
+
+# Cleanup /tmp copies in the container
+"$PODMAN" exec datahub-actions rm -rf /tmp/feast-repo /tmp/recipes
 
 # minio s3 source requires pyspark (~300 MB) which is not in datahub-actions.
 # The trino delta catalog already exposes all lakehouse tables.

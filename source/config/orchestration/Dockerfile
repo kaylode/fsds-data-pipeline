@@ -7,7 +7,14 @@ USER root
 RUN /usr/local/bin/python -m pip install --no-cache-dir \
     "great_expectations==0.18.19" \
     "acryl-datahub[airflow]" \
+    "acryl-datahub[hive]" \
+    "acryl-datahub[s3]" \
+    "acryl-datahub[postgres]" \
+    "acryl-datahub[kafka]" \
+    "acryl-datahub[trino]" \
     "acryl-datahub-airflow-plugin" \
+    "pymysql" \
+    "typing-extensions>=4.10.0" \
     "pandas" \
     "sqlglot" \
     "python-dotenv" \

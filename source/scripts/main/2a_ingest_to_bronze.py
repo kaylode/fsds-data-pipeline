@@ -80,7 +80,9 @@ def ingest_to_minio(paths):
         logger.info(f"Writing {table_name} table to S3/Delta...")
         df = pd.read_parquet(path)
         df["bronze_ingest_ts"] = pd.Timestamp.now(tz="UTC")
-        write_deltalake(f"s3://{BUCKET}/topics/{table_name}", df, **write_opts)
+        import pyarrow as pa
+        table = pa.Table.from_pandas(df)
+        write_deltalake(f"s3://{BUCKET}/topics/{table_name}", table, **write_opts)
     
     logger.info("Successfully wrote all historical EHR Delta tables to MinIO.")
 

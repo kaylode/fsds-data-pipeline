@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import signal
 import subprocess
+import sys
 import uuid
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
@@ -127,22 +128,29 @@ def _stream_job_urn(task_id: str) -> str:
 def _ensure_run_metadata_table() -> None:
     """Create ehr_pipeline_runs table in the Airflow Postgres DB if absent."""
     from sqlalchemy import create_engine, text
+    from sqlalchemy.exc import DBAPIError
     engine = create_engine(DB_METADATA_CONN)
-    with engine.begin() as conn:
-        conn.execute(text("""
-            CREATE TABLE IF NOT EXISTS ehr_pipeline_runs (
-                run_id           TEXT PRIMARY KEY,
-                dag_id           TEXT,
-                task_id          TEXT,
-                airflow_run_id   TEXT,
-                start_ts         TIMESTAMPTZ,
-                end_ts           TIMESTAMPTZ,
-                status           TEXT,
-                input_row_count  BIGINT,
-                output_row_count BIGINT,
-                error_msg        TEXT
-            )
-        """))
+    try:
+        with engine.begin() as conn:
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS ehr_pipeline_runs (
+                    run_id           TEXT PRIMARY KEY,
+                    dag_id           TEXT,
+                    task_id          TEXT,
+                    airflow_run_id   TEXT,
+                    start_ts         TIMESTAMPTZ,
+                    end_ts           TIMESTAMPTZ,
+                    status           TEXT,
+                    input_row_count  BIGINT,
+                    output_row_count BIGINT,
+                    error_msg        TEXT
+                )
+            """))
+    except DBAPIError as e:
+        if "already exists" in str(e).lower():
+            pass
+        else:
+            raise
 
 
 def _upsert_run(
@@ -276,6 +284,7 @@ def _emit_batch_step(task_id: str, input_urns: list[str], output_urns: list[str]
                     upstreams=[
                         UpstreamClass(
                             dataset=in_urn,
+                            type="TRANSFORMED",
                             auditStamp=AuditStampClass(
                                 time=now_ms, actor="urn:li:corpuser:airflow",
                             ),
@@ -338,6 +347,7 @@ def _emit_stream_step(task_id: str, input_urns: list[str], output_urns: list[str
                     upstreams=[
                         UpstreamClass(
                             dataset=in_urn,
+                            type="TRANSFORMED",
                             auditStamp=AuditStampClass(
                                 time=now_ms, actor="urn:li:corpuser:flink",
                             ),
@@ -413,10 +423,15 @@ def bronze_ingest(**context) -> None:
     Target: s3://lakehouse/topics/raw_* + Trino delta.bronze
     """
     with _run_tracker("bronze_ingest", context) as meta:
-        subprocess.run(
+        res = subprocess.run(
             ["uv", "run", "python", f"{SCRIPTS_DIR}/2a_ingest_to_bronze.py"],
-            cwd=SCRIPTS_DIR, check=True,
+            cwd=SCRIPTS_DIR, capture_output=True, text=True
         )
+        if res.stdout:
+            print(res.stdout)
+        if res.stderr:
+            print(res.stderr, file=sys.stderr)
+        res.check_returncode()
         meta["output_rows"] = -1  # row count tracked by the script itself
         _emit_batch_step("bronze_ingest", SOURCE_FILE_URNS, BRONZE_URNS)
 
@@ -520,10 +535,15 @@ def silver_transform(**context) -> None:
     Target: s3://lakehouse/topics/stg_* + Trino delta.silver
     """
     with _run_tracker("silver_transform", context) as meta:
-        subprocess.run(
+        res = subprocess.run(
             ["uv", "run", "python", f"{SCRIPTS_DIR}/3_transform_to_silver.py"],
-            cwd=SCRIPTS_DIR, check=True,
+            cwd=SCRIPTS_DIR, capture_output=True, text=True
         )
+        if res.stdout:
+            print(res.stdout)
+        if res.stderr:
+            print(res.stderr, file=sys.stderr)
+        res.check_returncode()
         meta["output_rows"] = -1
         _emit_batch_step("silver_transform", BRONZE_URNS, SILVER_URNS)
 
@@ -536,10 +556,15 @@ def gold_transform(**context) -> None:
     Target: s3://lakehouse/topics/{dim_*,fact_*,obt_*} + Trino delta.gold
     """
     with _run_tracker("gold_transform", context) as meta:
-        subprocess.run(
+        res = subprocess.run(
             ["uv", "run", "python", f"{SCRIPTS_DIR}/4_transform_to_gold.py"],
-            cwd=SCRIPTS_DIR, check=True,
+            cwd=SCRIPTS_DIR, capture_output=True, text=True
         )
+        if res.stdout:
+            print(res.stdout)
+        if res.stderr:
+            print(res.stderr, file=sys.stderr)
+        res.check_returncode()
         meta["output_rows"] = -1
         _emit_batch_step("gold_transform", SILVER_URNS, GOLD_URNS)
 
@@ -553,10 +578,15 @@ def compute_features(**context) -> None:
             + delta.gold.gold_visit_labels
     """
     with _run_tracker("compute_features", context) as meta:
-        subprocess.run(
+        res = subprocess.run(
             ["uv", "run", "python", f"{SCRIPTS_DIR}/5_compute_features.py"],
-            cwd=SCRIPTS_DIR, check=True,
+            cwd=SCRIPTS_DIR, capture_output=True, text=True
         )
+        if res.stdout:
+            print(res.stdout)
+        if res.stderr:
+            print(res.stderr, file=sys.stderr)
+        res.check_returncode()
         meta["output_rows"] = -1
         _emit_batch_step("compute_features", GOLD_URNS, FEATURE_URNS)
 
@@ -653,6 +683,16 @@ def push_stream_features(**context) -> None:
         _emit_stream_step("push_stream_features", [KAFKA_FEATURES_URN], [ONLINE_STORE_URN])
 
 
+def log_pipeline_duration(context) -> None:
+    dag_run = context.get("dag_run")
+    if dag_run and dag_run.start_date:
+        end_time = dag_run.end_date or datetime.now(timezone.utc)
+        duration = end_time - dag_run.start_date
+        print(f"[log_pipeline_duration] DAG run {dag_run.run_id} finished in {duration.total_seconds()} seconds.")
+    else:
+        print("[log_pipeline_duration] Could not determine DAG run duration.")
+
+
 # ── DAG Definition ────────────────────────────────────────────────────────────
 with DAG(
     dag_id="ehr_data_pipeline",
@@ -665,6 +705,7 @@ with DAG(
     schedule_interval="@daily",
     catchup=False,
     tags=["ehr", "datahub", "feast", "flink", "spark", "delta-lake"],
+    on_success_callback=log_pipeline_duration,
 ) as dag:
 
     # ── Batch branch ─────────────────────────────────────────────────────────

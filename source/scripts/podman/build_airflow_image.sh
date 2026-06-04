@@ -45,12 +45,23 @@ $PODMAN run -d \
     "$BASE_IMAGE" \
     -c "sleep 3600"
 
+echo "☕ Installing Java JRE inside container..."
+$PODMAN exec "$CONTAINER_NAME" bash -c '
+    set -e
+    JAVA_URL="https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.11%2B9/OpenJDK17U-jre_x64_linux_hotspot_17.0.11_9.tar.gz"
+    echo "  → downloading Java 17 standalone JRE..."
+    curl -fsSL "$JAVA_URL" -o /tmp/jre.tar.gz
+    echo "  → extracting Java..."
+    mkdir -p /home/airflow/jre
+    tar -xzf /tmp/jre.tar.gz -C /home/airflow/jre --strip-components=1
+    rm /tmp/jre.tar.gz
+'
+
 echo "📦 Installing custom Python packages inside container..."
 $PODMAN exec "$CONTAINER_NAME" bash -c '
     set -e
-    /home/airflow/.local/bin/pip install --upgrade uv
-    cd /workspace
-    /home/airflow/.local/bin/uv pip install --no-cache-dir \
+    cd /tmp
+    /home/airflow/.local/bin/pip install --no-cache-dir --use-deprecated=legacy-resolver \
         "great_expectations==0.18.19" \
         "acryl-datahub[airflow,postgres,kafka,trino,feast]" \
         "acryl-datahub-airflow-plugin" \
@@ -75,7 +86,8 @@ echo "💾 Exporting container filesystem and importing as image $TARGET_IMAGE..
 $PODMAN export "$CONTAINER_NAME" | $PODMAN import \
     --change 'USER 50000' \
     --change 'ENTRYPOINT ["/usr/bin/dumb-init", "--", "/entrypoint"]' \
-    --change 'ENV PATH=/root/bin:/home/airflow/.local/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin' \
+    --change 'ENV PATH=/root/bin:/home/airflow/.local/bin:/home/airflow/jre/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin' \
+    --change 'ENV JAVA_HOME=/home/airflow/jre' \
     --change 'ENV LANG=C.UTF-8' \
     --change 'ENV GPG_KEY=7169605F62C751356D054A26A821E680E5FA6305' \
     --change 'ENV PYTHON_VERSION=3.12.6' \

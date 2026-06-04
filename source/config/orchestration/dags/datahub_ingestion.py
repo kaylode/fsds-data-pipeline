@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -105,6 +105,16 @@ def _run_ingestion(recipe: dict) -> None:
     pipeline.raise_from_status()
 
 
+def log_pipeline_duration(context) -> None:
+    dag_run = context.get("dag_run")
+    if dag_run and dag_run.start_date:
+        end_time = dag_run.end_date or datetime.now(timezone.utc)
+        duration = end_time - dag_run.start_date
+        print(f"[log_pipeline_duration] DAG run {dag_run.run_id} finished in {duration.total_seconds()} seconds.")
+    else:
+        print("[log_pipeline_duration] Could not determine DAG run duration.")
+
+
 with DAG(
     dag_id="datahub_metadata_ingestion",
     description="Refresh metadata for all sources (postgres, kafka, hive, trino, minio) in DataHub",
@@ -112,6 +122,7 @@ with DAG(
     schedule_interval="*/5 * * * *",
     catchup=False,
     tags=["datahub", "metadata", "ingestion"],
+    on_success_callback=log_pipeline_duration,
 ) as dag:
     for source_name, recipe in RECIPES:
         PythonOperator(

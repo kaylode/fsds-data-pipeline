@@ -39,6 +39,7 @@ dependencies = [
     "apache-beam[tfrecord]>=2.72.0",
     "apache-flink>=2.2.0",
     "great-expectations>=0.15.28",
+    "graphviz>=0.21",
 ]
 
 

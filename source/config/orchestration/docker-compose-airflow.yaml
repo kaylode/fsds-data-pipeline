@@ -41,9 +41,10 @@ x-airflow-common:
     - ./dags:/opt/airflow/dags
     - ./logs:/opt/airflow/logs
     - ./plugins:/opt/airflow/plugins
-    - ./data:/opt/airflow/data          # Sample CSV data for the pipeline
+    - ../../data:/opt/data              # Mount generated synthetic Parquet tables
     - ../../scripts/main:/opt/airflow/scripts:ro   # EHR pipeline scripts (2a–7)
     - ../feature_store:/opt/airflow/feature_store:ro      # Feast repo (feature_store.yaml + feature_definitions.py)
+    - ../../../.tmp/flink-lib:/opt/.tmp/flink-lib:ro
   user: "${AIRFLOW_UID:-50000}:0"
   x-podman.uidmaps:
     - "${AIRFLOW_UID:-50000}:0:1"
@@ -54,6 +55,7 @@ services:
   # ── Airflow Web UI ───────────────────────────────────────────────────────────
   airflow-webserver:
     <<: *airflow-common
+    container_name: airflow-webserver
     command: webserver
     depends_on:
       airflow-init:
@@ -67,6 +69,7 @@ services:
   # ── Airflow Scheduler ────────────────────────────────────────────────────────
   airflow-scheduler:
     <<: *airflow-common
+    container_name: airflow-scheduler
     command: scheduler
     depends_on:
       airflow-init:
@@ -81,6 +84,7 @@ services:
   # ── One-time DB init + admin user creation ──────────────────────────────────
   airflow-init:
     <<: *airflow-common
+    container_name: airflow-init
     command: version
     environment:
       <<: *airflow-common-env
