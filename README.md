@@ -119,7 +119,7 @@ make airflow-up    # Airflow webserver + scheduler
 make ps
 ```
 
-[image](artifacts/containers.png)
+![image](artifacts/containers.png)
 
 ### 3. Batch pipeline (run in order)
 
