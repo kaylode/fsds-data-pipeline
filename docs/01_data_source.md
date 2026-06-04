@@ -133,6 +133,14 @@ The Flink processor (`scripts/main/6_flink_stream_processor.py`) consumes this s
 | Duplicate `event_id` | Silver | Dedup by `event_id`, keep latest |
 | Null `ward_id` in visits | Silver | Filter out records |
 | Non-standard gender codes | Silver | Map to standard `M`/`F`/`Unknown` |
+
+---
+
+## Data EDA
+
+![image](../artifacts/eda_report.png)
+
+
 | Microsecond timestamps | Silver | Cast to standard `TIMESTAMP` |
 | Mixed null/text in `text_value` | Gold | Coalesce with `num_value` per event type |
 | Out-of-range vital measurements | Gold | Not filtered (left for ML preprocessing) |
