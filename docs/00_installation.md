@@ -157,26 +157,34 @@ You should see all containers with status `Up`:
 ![image](../artifacts/containers.png)
 
 
-| Container | Role |
-|---|---|
-| `kafka` | Message broker (KRaft mode) |
-| `schema-registry` | Confluent Schema Registry |
-| `redpanda-console` | Kafka UI |
-| `postgres` | Airflow + Hive metastore DB |
-| `redis` | Feast online store |
-| `minio` | S3-compatible object storage |
-| `hive-metastore` | Hive catalog for Trino |
-| `trino` | SQL query engine |
-| `spark-master` | Spark standalone master |
-| `spark-worker` | Spark standalone worker |
-| `flink-jobmanager` | Flink job manager |
-| `flink-taskmanager` | Flink task manager |
-| `datahub-gms` | DataHub metadata service |
-| `datahub-frontend` | DataHub UI |
-| `datahub-actions` | DataHub async actions |
-| `opensearch` | DataHub search backend |
-| `airflow-webserver` | Airflow UI |
-| `airflow-scheduler` | Airflow DAG scheduler |
+All services run under `network_mode: host` (rootless Podman). Every port is on `localhost`.
+Ports are configurable via `.env` — see `.env.example` for all variable names.
+
+| Port | Service | Protocol | Notes |
+|---:|---|---|---|
+| `5432` | PostgreSQL | SQL | Airflow DB + Hive metastore backend |
+| `5433` | PostgreSQL (Metastore) | SQL | Hive Metastore dedicated DB |
+| `6123` | Flink JobManager RPC | TCP | Internal Flink cluster communication |
+| `6379` | Redis | TCP | Feast online store |
+| `7077` | Spark Master | TCP | `spark-submit --master spark://127.0.0.1:7077` |
+| `8081` | Schema Registry | HTTP | Confluent Schema Registry |
+| `8082` | Airflow Webserver | HTTP | Pipeline orchestration UI |
+| `8083` | Debezium Connect | HTTP | Kafka Connect CDC engine |
+| `8085` | pgweb | HTTP | PostgreSQL visual browser |
+| `8086` | Redpanda Console | HTTP | Kafka topic and consumer UI |
+| `8087` | Flink REST / Dashboard | HTTP | Job submission + monitoring UI (`FLINK_REST_PORT`) |
+| `8088` | DataHub GMS | HTTP | Metadata service REST API |
+| `8089` | Spark Master Web UI | HTTP | Spark cluster monitoring |
+| `8090` | Trino | HTTP | SQL query engine + Web UI |
+| `8091` | Spark Worker Web UI | HTTP | Per-worker status |
+| `9000` | MinIO S3 API | HTTP | S3-compatible endpoint for Delta writes |
+| `9001` | MinIO Console | HTTP | Object storage browser |
+| `9002` | DataHub Frontend | HTTP | DataHub UI |
+| `9083` | Hive Metastore | Thrift | Table catalog for Trino |
+| `9092` | Kafka Broker | TCP | `PLAINTEXT://localhost:9092` |
+| `9093` | Kafka Controller | TCP | KRaft quorum listener |
+| `9200` | OpenSearch | HTTP | DataHub search backend |
+
 
 ---
 
