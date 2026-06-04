@@ -1,0 +1,195 @@
+[2026-06-04T15:16:33.972+0000] {local_task_job_runner.py:123} INFO - ::group::Pre task execution logs
+[2026-06-04T15:16:33.990+0000] {taskinstance.py:2612} INFO - Dependencies all met for dep_context=non-requeueable deps ti=<TaskInstance: ehr_data_pipeline.gold_transform manual__2026-06-04T15:13:39.889520+00:00 [queued]>
+[2026-06-04T15:16:33.999+0000] {taskinstance.py:2612} INFO - Dependencies all met for dep_context=requeueable deps ti=<TaskInstance: ehr_data_pipeline.gold_transform manual__2026-06-04T15:13:39.889520+00:00 [queued]>
+[2026-06-04T15:16:33.999+0000] {taskinstance.py:2865} INFO - Starting attempt 1 of 1
+[2026-06-04T15:16:34.015+0000] {taskinstance.py:2888} INFO - Executing <Task(PythonOperator): gold_transform> on 2026-06-04 15:13:39.889520+00:00
+[2026-06-04T15:16:34.021+0000] {standard_task_runner.py:104} INFO - Running: ['***', 'tasks', 'run', 'ehr_data_pipeline', 'gold_transform', 'manual__2026-06-04T15:13:39.889520+00:00', '--job-id', '61', '--raw', '--subdir', 'DAGS_FOLDER/ehr_data_pipeline.py', '--cfg-path', '/tmp/tmpx_csoc3i']
+[2026-06-04T15:16:34.023+0000] {standard_task_runner.py:105} INFO - Job 61: Subtask gold_transform
+[2026-06-04T15:16:34.025+0000] {logging_mixin.py:190} WARNING - /home/***/.local/lib/python3.12/site-packages/***/task/task_runner/standard_task_runner.py:70 DeprecationWarning: This process (pid=1148) is multi-threaded, use of fork() may lead to deadlocks in the child.
+[2026-06-04T15:16:34.026+0000] {standard_task_runner.py:72} INFO - Started process 1149 to run task
+[2026-06-04T15:16:34.064+0000] {task_command.py:467} INFO - Running <TaskInstance: ehr_data_pipeline.gold_transform manual__2026-06-04T15:13:39.889520+00:00 [running]> on host g120.grove.adaptcentre.ie
+[2026-06-04T15:16:34.146+0000] {taskinstance.py:3131} INFO - Exporting env vars: AIRFLOW_CTX_DAG_OWNER='***' AIRFLOW_CTX_DAG_ID='ehr_data_pipeline' AIRFLOW_CTX_TASK_ID='gold_transform' AIRFLOW_CTX_EXECUTION_DATE='2026-06-04T15:13:39.889520+00:00' AIRFLOW_CTX_TRY_NUMBER='1' AIRFLOW_CTX_DAG_RUN_ID='manual__2026-06-04T15:13:39.889520+00:00'
+[2026-06-04T15:16:34.147+0000] {taskinstance.py:731} INFO - ::endgroup::
+[2026-06-04T15:18:49.557+0000] {logging_mixin.py:190} INFO - :: loading settings :: url = jar:file:/home/***/.local/lib/python3.12/site-packages/pyspark/jars/ivy-2.5.1.jar!/org/apache/ivy/core/settings/ivysettings.xml
+Ivy Default Cache set to: /home/***/.ivy2/cache
+The jars for the packages stored in: /home/***/.ivy2/jars
+io.delta#delta-spark_2.12 added as a dependency
+org.apache.hadoop#hadoop-aws added as a dependency
+com.amazonaws#aws-java-sdk-bundle added as a dependency
+:: resolving dependencies :: org.apache.spark#spark-submit-parent-701d29c0-9666-4c74-b9d2-79bb9f923598;1.0
+	confs: [default]
+	found io.delta#delta-spark_2.12;3.3.0 in central
+	found io.delta#delta-storage;3.3.0 in central
+	found org.antlr#antlr4-runtime;4.9.3 in central
+	found org.apache.hadoop#hadoop-aws;3.3.4 in central
+	found com.amazonaws#aws-java-sdk-bundle;1.12.262 in central
+	found org.wildfly.openssl#wildfly-openssl;1.0.7.Final in central
+:: resolution report :: resolve 302ms :: artifacts dl 16ms
+	:: modules in use:
+	com.amazonaws#aws-java-sdk-bundle;1.12.262 from central in [default]
+	io.delta#delta-spark_2.12;3.3.0 from central in [default]
+	io.delta#delta-storage;3.3.0 from central in [default]
+	org.antlr#antlr4-runtime;4.9.3 from central in [default]
+	org.apache.hadoop#hadoop-aws;3.3.4 from central in [default]
+	org.wildfly.openssl#wildfly-openssl;1.0.7.Final from central in [default]
+	---------------------------------------------------------------------
+	|                  |            modules            ||   artifacts   |
+	|       conf       | number| search|dwnlded|evicted|| number|dwnlded|
+	---------------------------------------------------------------------
+	|      default     |   6   |   0   |   0   |   0   ||   6   |   0   |
+	---------------------------------------------------------------------
+:: retrieving :: org.apache.spark#spark-submit-parent-701d29c0-9666-4c74-b9d2-79bb9f923598
+	confs: [default]
+	0 artifacts copied, 6 already retrieved (0kB/8ms)
+26/06/04 15:16:36 WARN NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+/opt/***/scripts/4_transform_to_gold.py:303: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  run_id    = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+2026-06-04 15:16:37.929 | INFO     | __main__:main:305 - ============================================================
+2026-06-04 15:16:37.929 | INFO     | __main__:main:306 - EHR GOLD TRANSFORMATION — run_id=20260604_151637
+2026-06-04 15:16:37.929 | INFO     | __main__:main:307 - ============================================================
+2026-06-04 15:16:37.929 | INFO     | utils:build_spark_session:69 - Connecting to Spark cluster: local[*] for EHR-Gold-Transformation
+26/06/04 15:16:38 INFO SparkContext: Running Spark version 3.5.6
+26/06/04 15:16:38 INFO SparkContext: OS info Linux, 5.10.0-42-amd64, amd64
+26/06/04 15:16:38 INFO SparkContext: Java version 17.0.11
+26/06/04 15:16:38 INFO ResourceUtils: ==============================================================
+26/06/04 15:16:38 INFO ResourceUtils: No custom resources configured for spark.driver.
+26/06/04 15:16:38 INFO ResourceUtils: ==============================================================
+26/06/04 15:16:38 INFO SparkContext: Submitted application: EHR-Gold-Transformation
+26/06/04 15:16:38 INFO ResourceProfile: Default ResourceProfile created, executor resources: Map(cores -> name: cores, amount: 2, script: , vendor: , memory -> name: memory, amount: 16384, script: , vendor: , offHeap -> name: offHeap, amount: 0, script: , vendor: ), task resources: Map(cpus -> name: cpus, amount: 1.0)
+26/06/04 15:16:38 INFO ResourceProfile: Limiting resource is cpus at 2 tasks per executor
+26/06/04 15:16:38 INFO ResourceProfileManager: Added ResourceProfile id: 0
+26/06/04 15:16:38 INFO SecurityManager: Changing view acls to: ***
+26/06/04 15:16:38 INFO SecurityManager: Changing modify acls to: ***
+26/06/04 15:16:38 INFO SecurityManager: Changing view acls groups to: 
+26/06/04 15:16:38 INFO SecurityManager: Changing modify acls groups to: 
+26/06/04 15:16:38 INFO SecurityManager: SecurityManager: authentication disabled; ui acls disabled; users with view permissions: ***; groups with view permissions: EMPTY; users with modify permissions: ***; groups with modify permissions: EMPTY
+26/06/04 15:16:38 INFO Utils: Successfully started service 'sparkDriver' on port 37023.
+26/06/04 15:16:38 INFO SparkEnv: Registering MapOutputTracker
+26/06/04 15:16:38 INFO SparkEnv: Registering BlockManagerMaster
+26/06/04 15:16:38 INFO BlockManagerMasterEndpoint: Using org.apache.spark.storage.DefaultTopologyMapper for getting topology information
+26/06/04 15:16:38 INFO BlockManagerMasterEndpoint: BlockManagerMasterEndpoint up
+26/06/04 15:16:38 INFO SparkEnv: Registering BlockManagerMasterHeartbeat
+26/06/04 15:16:38 INFO DiskBlockManager: Created local directory at /tmp/blockmgr-3e15c21b-45d7-43f3-96cb-ab7786704fe2
+26/06/04 15:16:38 INFO MemoryStore: MemoryStore started with capacity 434.4 MiB
+26/06/04 15:16:38 INFO SparkEnv: Registering OutputCommitCoordinator
+26/06/04 15:16:38 INFO JettyUtils: Start Jetty 0.0.0.0:4040 for SparkUI
+26/06/04 15:16:38 INFO Utils: Successfully started service 'SparkUI' on port 4040.
+26/06/04 15:16:38 INFO SparkContext: Added JAR file:///home/***/.ivy2/jars/io.delta_delta-spark_2.12-3.3.0.jar at spark://host.containers.internal:37023/jars/io.delta_delta-spark_2.12-3.3.0.jar with timestamp 1780586198033
+26/06/04 15:16:38 INFO SparkContext: Added JAR file:///home/***/.ivy2/jars/org.apache.hadoop_hadoop-aws-3.3.4.jar at spark://host.containers.internal:37023/jars/org.apache.hadoop_hadoop-aws-3.3.4.jar with timestamp 1780586198033
+26/06/04 15:16:38 INFO SparkContext: Added JAR file:///home/***/.ivy2/jars/com.amazonaws_aws-java-sdk-bundle-1.12.262.jar at spark://host.containers.internal:37023/jars/com.amazonaws_aws-java-sdk-bundle-1.12.262.jar with timestamp 1780586198033
+26/06/04 15:16:38 INFO SparkContext: Added JAR file:///home/***/.ivy2/jars/io.delta_delta-storage-3.3.0.jar at spark://host.containers.internal:37023/jars/io.delta_delta-storage-3.3.0.jar with timestamp 1780586198033
+26/06/04 15:16:38 INFO SparkContext: Added JAR file:///home/***/.ivy2/jars/org.antlr_antlr4-runtime-4.9.3.jar at spark://host.containers.internal:37023/jars/org.antlr_antlr4-runtime-4.9.3.jar with timestamp 1780586198033
+26/06/04 15:16:38 INFO SparkContext: Added JAR file:///home/***/.ivy2/jars/org.wildfly.openssl_wildfly-openssl-1.0.7.Final.jar at spark://host.containers.internal:37023/jars/org.wildfly.openssl_wildfly-openssl-1.0.7.Final.jar with timestamp 1780586198033
+26/06/04 15:16:38 INFO SparkContext: Added file file:///home/***/.ivy2/jars/io.delta_delta-spark_2.12-3.3.0.jar at file:///home/***/.ivy2/jars/io.delta_delta-spark_2.12-3.3.0.jar with timestamp 1780586198033
+26/06/04 15:16:38 INFO Utils: Copying /home/***/.ivy2/jars/io.delta_delta-spark_2.12-3.3.0.jar to /tmp/spark-ff7b4085-5b57-4442-ace4-10b91cd5a45f/userFiles-db63b989-5323-4bc4-aaef-15ac4c8dc316/io.delta_delta-spark_2.12-3.3.0.jar
+26/06/04 15:16:38 INFO SparkContext: Added file file:///home/***/.ivy2/jars/org.apache.hadoop_hadoop-aws-3.3.4.jar at file:///home/***/.ivy2/jars/org.apache.hadoop_hadoop-aws-3.3.4.jar with timestamp 1780586198033
+26/06/04 15:16:38 INFO Utils: Copying /home/***/.ivy2/jars/org.apache.hadoop_hadoop-aws-3.3.4.jar to /tmp/spark-ff7b4085-5b57-4442-ace4-10b91cd5a45f/userFiles-db63b989-5323-4bc4-aaef-15ac4c8dc316/org.apache.hadoop_hadoop-aws-3.3.4.jar
+26/06/04 15:16:38 INFO SparkContext: Added file file:///home/***/.ivy2/jars/com.amazonaws_aws-java-sdk-bundle-1.12.262.jar at file:///home/***/.ivy2/jars/com.amazonaws_aws-java-sdk-bundle-1.12.262.jar with timestamp 1780586198033
+26/06/04 15:16:38 INFO Utils: Copying /home/***/.ivy2/jars/com.amazonaws_aws-java-sdk-bundle-1.12.262.jar to /tmp/spark-ff7b4085-5b57-4442-ace4-10b91cd5a45f/userFiles-db63b989-5323-4bc4-aaef-15ac4c8dc316/com.amazonaws_aws-java-sdk-bundle-1.12.262.jar
+26/06/04 15:16:39 INFO SparkContext: Added file file:///home/***/.ivy2/jars/io.delta_delta-storage-3.3.0.jar at file:///home/***/.ivy2/jars/io.delta_delta-storage-3.3.0.jar with timestamp 1780586198033
+26/06/04 15:16:39 INFO Utils: Copying /home/***/.ivy2/jars/io.delta_delta-storage-3.3.0.jar to /tmp/spark-ff7b4085-5b57-4442-ace4-10b91cd5a45f/userFiles-db63b989-5323-4bc4-aaef-15ac4c8dc316/io.delta_delta-storage-3.3.0.jar
+26/06/04 15:16:39 INFO SparkContext: Added file file:///home/***/.ivy2/jars/org.antlr_antlr4-runtime-4.9.3.jar at file:///home/***/.ivy2/jars/org.antlr_antlr4-runtime-4.9.3.jar with timestamp 1780586198033
+26/06/04 15:16:39 INFO Utils: Copying /home/***/.ivy2/jars/org.antlr_antlr4-runtime-4.9.3.jar to /tmp/spark-ff7b4085-5b57-4442-ace4-10b91cd5a45f/userFiles-db63b989-5323-4bc4-aaef-15ac4c8dc316/org.antlr_antlr4-runtime-4.9.3.jar
+26/06/04 15:16:39 INFO SparkContext: Added file file:///home/***/.ivy2/jars/org.wildfly.openssl_wildfly-openssl-1.0.7.Final.jar at file:///home/***/.ivy2/jars/org.wildfly.openssl_wildfly-openssl-1.0.7.Final.jar with timestamp 1780586198033
+26/06/04 15:16:39 INFO Utils: Copying /home/***/.ivy2/jars/org.wildfly.openssl_wildfly-openssl-1.0.7.Final.jar to /tmp/spark-ff7b4085-5b57-4442-ace4-10b91cd5a45f/userFiles-db63b989-5323-4bc4-aaef-15ac4c8dc316/org.wildfly.openssl_wildfly-openssl-1.0.7.Final.jar
+26/06/04 15:16:39 INFO Executor: Starting executor ID driver on host host.containers.internal
+26/06/04 15:16:39 INFO Executor: OS info Linux, 5.10.0-42-amd64, amd64
+26/06/04 15:16:39 INFO Executor: Java version 17.0.11
+26/06/04 15:16:39 INFO Executor: Starting executor with user classpath (userClassPathFirst = false): ''
+26/06/04 15:16:39 INFO Executor: Created or updated repl class loader org.apache.spark.util.MutableURLClassLoader@5a1f51d4 for default.
+26/06/04 15:16:39 INFO Executor: Fetching file:///home/***/.ivy2/jars/io.delta_delta-storage-3.3.0.jar with timestamp 1780586198033
+26/06/04 15:16:39 INFO Utils: /home/***/.ivy2/jars/io.delta_delta-storage-3.3.0.jar has been previously copied to /tmp/spark-ff7b4085-5b57-4442-ace4-10b91cd5a45f/userFiles-db63b989-5323-4bc4-aaef-15ac4c8dc316/io.delta_delta-storage-3.3.0.jar
+26/06/04 15:16:39 INFO Executor: Fetching file:///home/***/.ivy2/jars/org.apache.hadoop_hadoop-aws-3.3.4.jar with timestamp 1780586198033
+26/06/04 15:16:39 INFO Utils: /home/***/.ivy2/jars/org.apache.hadoop_hadoop-aws-3.3.4.jar has been previously copied to /tmp/spark-ff7b4085-5b57-4442-ace4-10b91cd5a45f/userFiles-db63b989-5323-4bc4-aaef-15ac4c8dc316/org.apache.hadoop_hadoop-aws-3.3.4.jar
+26/06/04 15:16:39 INFO Executor: Fetching file:///home/***/.ivy2/jars/io.delta_delta-spark_2.12-3.3.0.jar with timestamp 1780586198033
+26/06/04 15:16:39 INFO Utils: /home/***/.ivy2/jars/io.delta_delta-spark_2.12-3.3.0.jar has been previously copied to /tmp/spark-ff7b4085-5b57-4442-ace4-10b91cd5a45f/userFiles-db63b989-5323-4bc4-aaef-15ac4c8dc316/io.delta_delta-spark_2.12-3.3.0.jar
+26/06/04 15:16:39 INFO Executor: Fetching file:///home/***/.ivy2/jars/org.antlr_antlr4-runtime-4.9.3.jar with timestamp 1780586198033
+26/06/04 15:16:39 INFO Utils: /home/***/.ivy2/jars/org.antlr_antlr4-runtime-4.9.3.jar has been previously copied to /tmp/spark-ff7b4085-5b57-4442-ace4-10b91cd5a45f/userFiles-db63b989-5323-4bc4-aaef-15ac4c8dc316/org.antlr_antlr4-runtime-4.9.3.jar
+26/06/04 15:16:39 INFO Executor: Fetching file:///home/***/.ivy2/jars/org.wildfly.openssl_wildfly-openssl-1.0.7.Final.jar with timestamp 1780586198033
+26/06/04 15:16:39 INFO Utils: /home/***/.ivy2/jars/org.wildfly.openssl_wildfly-openssl-1.0.7.Final.jar has been previously copied to /tmp/spark-ff7b4085-5b57-4442-ace4-10b91cd5a45f/userFiles-db63b989-5323-4bc4-aaef-15ac4c8dc316/org.wildfly.openssl_wildfly-openssl-1.0.7.Final.jar
+26/06/04 15:16:39 INFO Executor: Fetching file:///home/***/.ivy2/jars/com.amazonaws_aws-java-sdk-bundle-1.12.262.jar with timestamp 1780586198033
+26/06/04 15:16:39 INFO Utils: /home/***/.ivy2/jars/com.amazonaws_aws-java-sdk-bundle-1.12.262.jar has been previously copied to /tmp/spark-ff7b4085-5b57-4442-ace4-10b91cd5a45f/userFiles-db63b989-5323-4bc4-aaef-15ac4c8dc316/com.amazonaws_aws-java-sdk-bundle-1.12.262.jar
+26/06/04 15:16:39 INFO Executor: Fetching spark://host.containers.internal:37023/jars/org.wildfly.openssl_wildfly-openssl-1.0.7.Final.jar with timestamp 1780586198033
+26/06/04 15:16:39 INFO TransportClientFactory: Successfully created connection to host.containers.internal/192.168.1.120:37023 after 29 ms (0 ms spent in bootstraps)
+26/06/04 15:16:39 INFO Utils: Fetching spark://host.containers.internal:37023/jars/org.wildfly.openssl_wildfly-openssl-1.0.7.Final.jar to /tmp/spark-ff7b4085-5b57-4442-ace4-10b91cd5a45f/userFiles-db63b989-5323-4bc4-aaef-15ac4c8dc316/fetchFileTemp13178447272128672079.tmp
+26/06/04 15:16:39 INFO Utils: /tmp/spark-ff7b4085-5b57-4442-ace4-10b91cd5a45f/userFiles-db63b989-5323-4bc4-aaef-15ac4c8dc316/fetchFileTemp13178447272128672079.tmp has been previously copied to /tmp/spark-ff7b4085-5b57-4442-ace4-10b91cd5a45f/userFiles-db63b989-5323-4bc4-aaef-15ac4c8dc316/org.wildfly.openssl_wildfly-openssl-1.0.7.Final.jar
+26/06/04 15:16:39 INFO Executor: Adding file:/tmp/spark-ff7b4085-5b57-4442-ace4-10b91cd5a45f/userFiles-db63b989-5323-4bc4-aaef-15ac4c8dc316/org.wildfly.openssl_wildfly-openssl-1.0.7.Final.jar to class loader default
+26/06/04 15:16:39 INFO Executor: Fetching spark://host.containers.internal:37023/jars/io.delta_delta-storage-3.3.0.jar with timestamp 1780586198033
+26/06/04 15:16:39 INFO Utils: Fetching spark://host.containers.internal:37023/jars/io.delta_delta-storage-3.3.0.jar to /tmp/spark-ff7b4085-5b57-4442-ace4-10b91cd5a45f/userFiles-db63b989-5323-4bc4-aaef-15ac4c8dc316/fetchFileTemp17004004794077737835.tmp
+26/06/04 15:16:39 INFO Utils: /tmp/spark-ff7b4085-5b57-4442-ace4-10b91cd5a45f/userFiles-db63b989-5323-4bc4-aaef-15ac4c8dc316/fetchFileTemp17004004794077737835.tmp has been previously copied to /tmp/spark-ff7b4085-5b57-4442-ace4-10b91cd5a45f/userFiles-db63b989-5323-4bc4-aaef-15ac4c8dc316/io.delta_delta-storage-3.3.0.jar
+26/06/04 15:16:39 INFO Executor: Adding file:/tmp/spark-ff7b4085-5b57-4442-ace4-10b91cd5a45f/userFiles-db63b989-5323-4bc4-aaef-15ac4c8dc316/io.delta_delta-storage-3.3.0.jar to class loader default
+26/06/04 15:16:39 INFO Executor: Fetching spark://host.containers.internal:37023/jars/org.apache.hadoop_hadoop-aws-3.3.4.jar with timestamp 1780586198033
+26/06/04 15:16:39 INFO Utils: Fetching spark://host.containers.internal:37023/jars/org.apache.hadoop_hadoop-aws-3.3.4.jar to /tmp/spark-ff7b4085-5b57-4442-ace4-10b91cd5a45f/userFiles-db63b989-5323-4bc4-aaef-15ac4c8dc316/fetchFileTemp5471283253370374073.tmp
+26/06/04 15:16:39 INFO Utils: /tmp/spark-ff7b4085-5b57-4442-ace4-10b91cd5a45f/userFiles-db63b989-5323-4bc4-aaef-15ac4c8dc316/fetchFileTemp5471283253370374073.tmp has been previously copied to /tmp/spark-ff7b4085-5b57-4442-ace4-10b91cd5a45f/userFiles-db63b989-5323-4bc4-aaef-15ac4c8dc316/org.apache.hadoop_hadoop-aws-3.3.4.jar
+26/06/04 15:16:39 INFO Executor: Adding file:/tmp/spark-ff7b4085-5b57-4442-ace4-10b91cd5a45f/userFiles-db63b989-5323-4bc4-aaef-15ac4c8dc316/org.apache.hadoop_hadoop-aws-3.3.4.jar to class loader default
+26/06/04 15:16:39 INFO Executor: Fetching spark://host.containers.internal:37023/jars/com.amazonaws_aws-java-sdk-bundle-1.12.262.jar with timestamp 1780586198033
+26/06/04 15:16:39 INFO Utils: Fetching spark://host.containers.internal:37023/jars/com.amazonaws_aws-java-sdk-bundle-1.12.262.jar to /tmp/spark-ff7b4085-5b57-4442-ace4-10b91cd5a45f/userFiles-db63b989-5323-4bc4-aaef-15ac4c8dc316/fetchFileTemp5644251994803923063.tmp
+26/06/04 15:16:40 INFO Utils: /tmp/spark-ff7b4085-5b57-4442-ace4-10b91cd5a45f/userFiles-db63b989-5323-4bc4-aaef-15ac4c8dc316/fetchFileTemp5644251994803923063.tmp has been previously copied to /tmp/spark-ff7b4085-5b57-4442-ace4-10b91cd5a45f/userFiles-db63b989-5323-4bc4-aaef-15ac4c8dc316/com.amazonaws_aws-java-sdk-bundle-1.12.262.jar
+26/06/04 15:16:40 INFO Executor: Adding file:/tmp/spark-ff7b4085-5b57-4442-ace4-10b91cd5a45f/userFiles-db63b989-5323-4bc4-aaef-15ac4c8dc316/com.amazonaws_aws-java-sdk-bundle-1.12.262.jar to class loader default
+26/06/04 15:16:40 INFO Executor: Fetching spark://host.containers.internal:37023/jars/io.delta_delta-spark_2.12-3.3.0.jar with timestamp 1780586198033
+26/06/04 15:16:40 INFO Utils: Fetching spark://host.containers.internal:37023/jars/io.delta_delta-spark_2.12-3.3.0.jar to /tmp/spark-ff7b4085-5b57-4442-ace4-10b91cd5a45f/userFiles-db63b989-5323-4bc4-aaef-15ac4c8dc316/fetchFileTemp8087654557912449064.tmp
+26/06/04 15:16:40 INFO Utils: /tmp/spark-ff7b4085-5b57-4442-ace4-10b91cd5a45f/userFiles-db63b989-5323-4bc4-aaef-15ac4c8dc316/fetchFileTemp8087654557912449064.tmp has been previously copied to /tmp/spark-ff7b4085-5b57-4442-ace4-10b91cd5a45f/userFiles-db63b989-5323-4bc4-aaef-15ac4c8dc316/io.delta_delta-spark_2.12-3.3.0.jar
+26/06/04 15:16:40 INFO Executor: Adding file:/tmp/spark-ff7b4085-5b57-4442-ace4-10b91cd5a45f/userFiles-db63b989-5323-4bc4-aaef-15ac4c8dc316/io.delta_delta-spark_2.12-3.3.0.jar to class loader default
+26/06/04 15:16:40 INFO Executor: Fetching spark://host.containers.internal:37023/jars/org.antlr_antlr4-runtime-4.9.3.jar with timestamp 1780586198033
+26/06/04 15:16:40 INFO Utils: Fetching spark://host.containers.internal:37023/jars/org.antlr_antlr4-runtime-4.9.3.jar to /tmp/spark-ff7b4085-5b57-4442-ace4-10b91cd5a45f/userFiles-db63b989-5323-4bc4-aaef-15ac4c8dc316/fetchFileTemp12227382508148713601.tmp
+26/06/04 15:16:40 INFO Utils: /tmp/spark-ff7b4085-5b57-4442-ace4-10b91cd5a45f/userFiles-db63b989-5323-4bc4-aaef-15ac4c8dc316/fetchFileTemp12227382508148713601.tmp has been previously copied to /tmp/spark-ff7b4085-5b57-4442-ace4-10b91cd5a45f/userFiles-db63b989-5323-4bc4-aaef-15ac4c8dc316/org.antlr_antlr4-runtime-4.9.3.jar
+26/06/04 15:16:40 INFO Executor: Adding file:/tmp/spark-ff7b4085-5b57-4442-ace4-10b91cd5a45f/userFiles-db63b989-5323-4bc4-aaef-15ac4c8dc316/org.antlr_antlr4-runtime-4.9.3.jar to class loader default
+26/06/04 15:16:40 INFO Utils: Successfully started service 'org.apache.spark.network.netty.NettyBlockTransferService' on port 39835.
+26/06/04 15:16:40 INFO NettyBlockTransferService: Server created on host.containers.internal:39835
+26/06/04 15:16:40 INFO BlockManager: Using org.apache.spark.storage.RandomBlockReplicationPolicy for block replication policy
+26/06/04 15:16:40 INFO BlockManagerMaster: Registering BlockManager BlockManagerId(driver, host.containers.internal, 39835, None)
+26/06/04 15:16:40 INFO BlockManagerMasterEndpoint: Registering block manager host.containers.internal:39835 with 434.4 MiB RAM, BlockManagerId(driver, host.containers.internal, 39835, None)
+26/06/04 15:16:40 INFO BlockManagerMaster: Registered BlockManager BlockManagerId(driver, host.containers.internal, 39835, None)
+26/06/04 15:16:40 INFO BlockManager: Initialized BlockManager: BlockManagerId(driver, host.containers.internal, 39835, None)
+26/06/04 15:16:40 INFO SingleEventLogFileWriter: Logging events to file:/.tmp/spark-logs/local-1780586199184.inprogress
+2026-06-04 15:16:41.349 | INFO     | utils:build_spark_session:101 - Spark version: 3.5.6
+2026-06-04 15:16:41.350 | INFO     | __main__:transform_dim_patient:66 - Building dim_patient...
+26/06/04 15:16:42 WARN MetricsConfig: Cannot locate configuration: tried hadoop-metrics2-s3a-file-system.properties,hadoop-metrics2.properties
+26/06/04 15:16:46 WARN SparkStringUtils: Truncated the string representation of a plan since it was too large. This behavior can be adjusted by setting 'spark.sql.debug.maxToStringFields'.
+2026-06-04 15:16:57.817 | INFO     | __main__:transform_dim_ward:88 - Building dim_ward...
+2026-06-04 15:17:03.631 | INFO     | __main__:transform_dim_event_type:107 - Building dim_event_type...
+2026-06-04 15:17:08.648 | INFO     | __main__:transform_dim_vital:145 - Building dim_vital...
+2026-06-04 15:17:11.870 | INFO     | __main__:transform_dim_lab:152 - Building dim_lab...
+2026-06-04 15:17:14.604 | INFO     | __main__:transform_dim_medication:159 - Building dim_medication...
+2026-06-04 15:17:17.334 | INFO     | __main__:transform_dim_diagnosis:170 - Building dim_diagnosis...
+2026-06-04 15:17:19.705 | INFO     | __main__:transform_fact_visit:182 - Building fact_visit...
+2026-06-04 15:17:39.442 | INFO     | __main__:transform_fact_clinical_event:207 - Building fact_clinical_event...
+2026-06-04 15:18:34.471 | INFO     | __main__:transform_obt:247 - Building obt_clinical_events...
+2026-06-04 15:18:47.685 | INFO     | __main__:main:325 - ============================================================
+2026-06-04 15:18:47.685 | INFO     | __main__:main:326 - Gold table row counts:
+2026-06-04 15:18:47.685 | INFO     | __main__:main:328 -   dim_patient              :     10,000 rows
+2026-06-04 15:18:47.685 | INFO     | __main__:main:328 -   dim_ward                 :          4 rows
+2026-06-04 15:18:47.685 | INFO     | __main__:main:328 -   dim_event_type           :         17 rows
+2026-06-04 15:18:47.685 | INFO     | __main__:main:328 -   dim_vital                :          5 rows
+2026-06-04 15:18:47.685 | INFO     | __main__:main:328 -   dim_lab                  :          4 rows
+2026-06-04 15:18:47.685 | INFO     | __main__:main:328 -   dim_medication           :          4 rows
+2026-06-04 15:18:47.685 | INFO     | __main__:main:328 -   dim_diagnosis            :          4 rows
+2026-06-04 15:18:47.685 | INFO     | __main__:main:328 -   fact_visit               :     50,000 rows
+2026-06-04 15:18:47.685 | INFO     | __main__:main:328 -   fact_clinical_event      :    150,000 rows
+2026-06-04 15:18:47.685 | INFO     | __main__:main:328 -   obt_clinical_events      :    150,000 rows
+2026-06-04 15:18:47.685 | INFO     | utils:register_tables_in_trino:133 - Registering tables in Trino under delta.gold ...
+2026-06-04 15:18:47.722 | INFO     | utils:register_tables_in_trino:146 -   delta.gold schema ensured.
+2026-06-04 15:18:47.722 | INFO     | utils:register_tables_in_trino:149 -   Registering delta.gold.dim_patient ...
+2026-06-04 15:18:47.823 | INFO     | utils:register_tables_in_trino:149 -   Registering delta.gold.dim_ward ...
+2026-06-04 15:18:47.935 | INFO     | utils:register_tables_in_trino:149 -   Registering delta.gold.dim_event_type ...
+2026-06-04 15:18:48.032 | INFO     | utils:register_tables_in_trino:149 -   Registering delta.gold.dim_vital ...
+2026-06-04 15:18:48.126 | INFO     | utils:register_tables_in_trino:149 -   Registering delta.gold.dim_lab ...
+2026-06-04 15:18:48.209 | INFO     | utils:register_tables_in_trino:149 -   Registering delta.gold.dim_medication ...
+2026-06-04 15:18:48.290 | INFO     | utils:register_tables_in_trino:149 -   Registering delta.gold.dim_diagnosis ...
+2026-06-04 15:18:48.409 | INFO     | utils:register_tables_in_trino:149 -   Registering delta.gold.fact_visit ...
+2026-06-04 15:18:48.512 | INFO     | utils:register_tables_in_trino:149 -   Registering delta.gold.fact_clinical_event ...
+2026-06-04 15:18:48.613 | INFO     | utils:register_tables_in_trino:149 -   Registering delta.gold.obt_clinical_events ...
+2026-06-04 15:18:48.710 | INFO     | utils:register_tables_in_trino:161 -   All tables registered in Trino under delta.gold.
+2026-06-04 15:18:49.320 | INFO     | __main__:main:337 - ============================================================
+2026-06-04 15:18:49.320 | INFO     | __main__:main:338 - Gold transformation complete. run_id=20260604_151637, elapsed=131.4s
+2026-06-04 15:18:49.320 | INFO     | __main__:main:339 - ============================================================
+[2026-06-04T15:18:49.558+0000] {logging_mixin.py:190} WARNING - 2026-06-04 15:16:34.587 | INFO     | utils:run_with_spark_submit:179 - Script was not started with spark-submit. Submitting job to cluster via subprocess...
+2026-06-04 15:16:34.588 | INFO     | utils:run_with_spark_submit:189 - Running command: spark-submit --master local[*] --packages io.delta:delta-spark_2.12:3.3.0,org.apache.hadoop:hadoop-aws:3.3.4,com.amazonaws:aws-java-sdk-bundle:1.12.262 /opt/***/scripts/4_transform_to_gold.py
+[2026-06-04T15:18:49.855+0000] {logging_mixin.py:190} INFO - [datahub] Emitted batch step: gold_transform
+[2026-06-04T15:18:49.864+0000] {logging_mixin.py:190} INFO - [run-meta] gold_transform → SUCCESS  run_id=a464c0d8-5209-43f7-9f6a-15cb0033a1c5
+[2026-06-04T15:18:49.865+0000] {python.py:240} INFO - Done. Returned value was: None
+[2026-06-04T15:18:49.872+0000] {taskinstance.py:340} INFO - ::group::Post task execution logs
+[2026-06-04T15:18:49.872+0000] {taskinstance.py:352} INFO - Marking task as SUCCESS. dag_id=ehr_data_pipeline, task_id=gold_transform, run_id=manual__2026-06-04T15:13:39.889520+00:00, execution_date=20260604T151339, start_date=20260604T151633, end_date=20260604T151849
+[2026-06-04T15:18:49.888+0000] {local_task_job_runner.py:266} INFO - Task exited with return code 0
+[2026-06-04T15:18:49.907+0000] {taskinstance.py:3900} INFO - 1 downstream tasks scheduled from follow-on schedule check
+[2026-06-04T15:18:49.914+0000] {local_task_job_runner.py:245} INFO - ::endgroup::

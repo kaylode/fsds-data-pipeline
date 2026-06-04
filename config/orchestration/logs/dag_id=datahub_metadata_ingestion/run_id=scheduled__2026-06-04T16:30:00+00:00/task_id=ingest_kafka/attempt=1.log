@@ -1,0 +1,41 @@
+[2026-06-04T16:35:01.407+0000] {local_task_job_runner.py:123} INFO - ::group::Pre task execution logs
+[2026-06-04T16:35:01.440+0000] {taskinstance.py:2612} INFO - Dependencies all met for dep_context=non-requeueable deps ti=<TaskInstance: datahub_metadata_ingestion.ingest_kafka scheduled__2026-06-04T16:30:00+00:00 [queued]>
+[2026-06-04T16:35:01.454+0000] {taskinstance.py:2612} INFO - Dependencies all met for dep_context=requeueable deps ti=<TaskInstance: datahub_metadata_ingestion.ingest_kafka scheduled__2026-06-04T16:30:00+00:00 [queued]>
+[2026-06-04T16:35:01.459+0000] {taskinstance.py:2865} INFO - Starting attempt 1 of 1
+[2026-06-04T16:35:01.498+0000] {taskinstance.py:2888} INFO - Executing <Task(PythonOperator): ingest_kafka> on 2026-06-04 16:30:00+00:00
+[2026-06-04T16:35:01.512+0000] {logging_mixin.py:190} WARNING - /home/***/.local/lib/python3.12/site-packages/***/task/task_runner/standard_task_runner.py:70 DeprecationWarning: This process (pid=7747) is multi-threaded, use of fork() may lead to deadlocks in the child.
+[2026-06-04T16:35:01.513+0000] {standard_task_runner.py:104} INFO - Running: ['***', 'tasks', 'run', 'datahub_metadata_ingestion', 'ingest_kafka', 'scheduled__2026-06-04T16:30:00+00:00', '--job-id', '97', '--raw', '--subdir', 'DAGS_FOLDER/datahub_ingestion.py', '--cfg-path', '/tmp/tmp5cdo8_ll']
+[2026-06-04T16:35:01.522+0000] {standard_task_runner.py:105} INFO - Job 97: Subtask ingest_kafka
+[2026-06-04T16:35:01.517+0000] {standard_task_runner.py:72} INFO - Started process 7759 to run task
+[2026-06-04T16:35:01.599+0000] {task_command.py:467} INFO - Running <TaskInstance: datahub_metadata_ingestion.ingest_kafka scheduled__2026-06-04T16:30:00+00:00 [running]> on host g120.grove.adaptcentre.ie
+[2026-06-04T16:35:01.767+0000] {taskinstance.py:3131} INFO - Exporting env vars: AIRFLOW_CTX_DAG_OWNER='***' AIRFLOW_CTX_DAG_ID='datahub_metadata_ingestion' AIRFLOW_CTX_TASK_ID='ingest_kafka' AIRFLOW_CTX_EXECUTION_DATE='2026-06-04T16:30:00+00:00' AIRFLOW_CTX_TRY_NUMBER='1' AIRFLOW_CTX_DAG_RUN_ID='scheduled__2026-06-04T16:30:00+00:00'
+[2026-06-04T16:35:01.773+0000] {taskinstance.py:731} INFO - ::endgroup::
+[2026-06-04T16:35:02.784+0000] {datahub_rest.py:156} WARNING - REST sink mode is ASYNC_BATCH but DATAHUB_EMIT_MODE is SYNC_PRIMARY (sync family). Overriding GMS emit mode to ASYNC.
+[2026-06-04T16:35:02.796+0000] {pipeline.py:225} INFO - Sink configured successfully. DataHubRestEmitter: configured to talk to http://127.0.0.1:8088
+[2026-06-04T16:35:03.831+0000] {pipeline.py:266} INFO - Source configured successfully.
+[2026-06-04T16:35:05.630+0000] {kafka.py:580} INFO - Fetching config details for all topics
+[2026-06-04T16:35:05.652+0000] {kafka.py:613} INFO - Config details for topic MetadataChangeEvent_v4 fetched successfully
+[2026-06-04T16:35:05.662+0000] {kafka.py:613} INFO - Config details for topic patient-events fetched successfully
+[2026-06-04T16:35:05.667+0000] {kafka.py:613} INFO - Config details for topic FailedMetadataChangeProposal_v1 fetched successfully
+[2026-06-04T16:35:05.670+0000] {kafka.py:613} INFO - Config details for topic _schemas fetched successfully
+[2026-06-04T16:35:05.674+0000] {kafka.py:613} INFO - Config details for topic MetadataChangeLog_Timeseries_v1 fetched successfully
+[2026-06-04T16:35:05.678+0000] {kafka.py:613} INFO - Config details for topic MetadataChangeProposal_v1 fetched successfully
+[2026-06-04T16:35:05.682+0000] {kafka.py:613} INFO - Config details for topic patient-features-24h fetched successfully
+[2026-06-04T16:35:05.686+0000] {kafka.py:613} INFO - Config details for topic DataHubUpgradeHistory_v1 fetched successfully
+[2026-06-04T16:35:05.689+0000] {kafka.py:613} INFO - Config details for topic PlatformEvent_v1 fetched successfully
+[2026-06-04T16:35:05.693+0000] {kafka.py:613} INFO - Config details for topic MetadataChangeLog_Versioned_v1 fetched successfully
+[2026-06-04T16:35:05.696+0000] {kafka.py:613} INFO - Config details for topic __consumer_offsets fetched successfully
+[2026-06-04T16:35:05.700+0000] {kafka.py:613} INFO - Config details for topic DataHubUsageEvent_v1 fetched successfully
+[2026-06-04T16:35:05.705+0000] {confluent_schema_registry.py:276} WARNING - Unable to find a matching subject name for the topic in the schema registry: The topic value is either schema-less, or no messages have been written to the topic yet. If this is unexpected, check the topic_subject_map and topic_naming related configs. => MetadataChangeEvent_v4
+[2026-06-04T16:35:05.709+0000] {confluent_schema_registry.py:276} WARNING - Unable to find a matching subject name for the topic in the schema registry: The topic value is either schema-less, or no messages have been written to the topic yet. If this is unexpected, check the topic_subject_map and topic_naming related configs. => patient-events
+[2026-06-04T16:35:05.716+0000] {confluent_schema_registry.py:276} WARNING - Unable to find a matching subject name for the topic in the schema registry: The topic value is either schema-less, or no messages have been written to the topic yet. If this is unexpected, check the topic_subject_map and topic_naming related configs. => FailedMetadataChangeProposal_v1
+[2026-06-04T16:35:05.801+0000] {confluent_schema_registry.py:276} WARNING - Unable to find a matching subject name for the topic in the schema registry: The topic value is either schema-less, or no messages have been written to the topic yet. If this is unexpected, check the topic_subject_map and topic_naming related configs. => patient-features-24h
+[2026-06-04T16:35:05.821+0000] {confluent_schema_registry.py:276} WARNING - Unable to find a matching subject name for the topic in the schema registry: The topic value is either schema-less, or no messages have been written to the topic yet. If this is unexpected, check the topic_subject_map and topic_naming related configs. => DataHubUpgradeHistory_v1
+[2026-06-04T16:35:05.870+0000] {confluent_schema_registry.py:276} WARNING - Unable to find a matching subject name for the topic in the schema registry: The topic value is either schema-less, or no messages have been written to the topic yet. If this is unexpected, check the topic_subject_map and topic_naming related configs. => DataHubUsageEvent_v1
+[2026-06-04T16:35:06.362+0000] {python.py:240} INFO - Done. Returned value was: None
+[2026-06-04T16:35:06.391+0000] {taskinstance.py:340} INFO - ::group::Post task execution logs
+[2026-06-04T16:35:06.396+0000] {taskinstance.py:352} INFO - Marking task as SUCCESS. dag_id=datahub_metadata_ingestion, task_id=ingest_kafka, run_id=scheduled__2026-06-04T16:30:00+00:00, execution_date=20260604T163000, start_date=20260604T163501, end_date=20260604T163506
+[2026-06-04T16:35:06.485+0000] {local_task_job_runner.py:266} INFO - Task exited with return code 0
+[2026-06-04T16:35:06.537+0000] {taskinstance.py:3900} INFO - 0 downstream tasks scheduled from follow-on schedule check
+[2026-06-04T16:35:06.540+0000] {standard_task_runner.py:217} INFO - Process not found (most likely exited), stop collecting metrics
+[2026-06-04T16:35:06.552+0000] {local_task_job_runner.py:245} INFO - ::endgroup::

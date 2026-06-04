@@ -1,0 +1,499 @@
+
+H
+(
+patient"
+patient_idJehr_feature_store
+¬†ÑÈˆßµ³Ğ†ÑÈÉô‹
+H
+(
+__dummy"
+__dummy_idJehr_feature_store
+¬†Ñˆß×µ³Ğ†Ñ˜ê˜Œ1"$b6bfc581-a51d-48f8-b076-13b09646b870*¼Ó†Ñø ®¶2ˆ
+ç
+patient_labelsehr_feature_storepatient"
+visit_id"
+admission_timestamp"
+discharge_timestamp"
+severity_level"
+is_readmitted_7d"
+has_inpatient_mortality"
+has_30day_mortality2€†°–:x
+feature_timestamp¢gold_visit_labelsò.,(SELECT * FROM delta.gold.gold_visit_labels)’¬†Ñ˜Œèf"³Ğ†Ñ˜•…€b
+
+patient_id’latest
+¬†ÑĞ˜À´³Ğ†ÑĞÃŒ‰2¡
+ñ
+patient_demographicsehr_feature_storepatient"
+
+gender"
+
+ethnic"
+country"
+age"
+is_deceased2€†°–:Ú
+feature_timestampŠOfeast.infra.offline_stores.contrib.trino_offline_store.trino_source.TrinoSource¢feat_patient_demographicsò64(SELECT * FROM delta.gold.feat_patient_demographics)’¬†Ñ€åf"³Ğ†Ñ Ó¤@b
+
+patient_id’latestª
+¬†ÑÈ¥ˆ³¼Ó†Ñ°¸Ç‡
+ŸÈÂ°×ÛìŸ¯†Ñ°×Ûì
+Ÿ¯†Ñ°×Ûì¨Î†Ñğ‰ÌL
+¨Î†Ñğ‰ÌLäÎ†ÑĞ·ÜL
+äÎ†ÑĞ·ÜL Ï†Ñ€äL
+ Ï†Ñ€äLÜÏ†ÑÀŒúL
+ÜÏ†ÑÀŒúL˜Ğ†ÑØûüL
+´éÂ˜’Ş¼´Ğ†Ñ˜’Ş¼
+´Ğ†Ñ˜’Ş¼ÔĞ†Ñ°Ş˜M
+ÔĞ†Ñ°Ş˜MÑ†Ñğ„¡M
+Ñ†Ñğ„¡MÌÑ†ÑÀü¨M
+ÌÑ†ÑÀü¨MˆÒ†Ñàú³M
+ˆÒ†Ñàú³MÄÒ†ÑÈ—­M
+ÄÒ†ÑÈ—­M€Ó†ÑØšÆM
+€Ó†ÑØšÆM¼Ó†Ñ˜¾ÏM2Ñ
+¡
+patient_icdehr_feature_storepatient"
+
+icd_chap_I"
+icd_chap_II"
+icd_chap_III"
+icd_chap_IV"
+
+icd_chap_V"
+icd_chap_VI"
+icd_chap_VII"
+icd_chap_VIII"
+icd_chap_IX"
+
+icd_chap_X"
+icd_chap_XI"
+icd_chap_XII"
+icd_chap_XIII"
+icd_chap_XIV"
+icd_chap_XV"
+icd_chap_XVI"
+icd_chap_XVII"
+icd_chap_XVIII"
+icd_chap_XIX"
+icd_chap_XX"
+icd_chap_XXI"
+icd_chap_XXII2€ç„:Î
+feature_timestampŠOfeast.infra.offline_stores.contrib.trino_offline_store.trino_source.TrinoSource¢feat_patient_icd_6mò0.(SELECT * FROM delta.gold.feat_patient_icd_6m)’¬†Ñàßf"³Ğ†Ñˆ„Á@b
+
+patient_id’latestª
+¬†Ñ¸¦Á³¼Ó†ÑàÔÒ¶
+ŸÈÂ°×ÛìŸ¯†Ñ°×Ûì
+Ÿ¯†Ñ°×Ûì¨Î†Ñğ‰ÌL
+¨Î†Ñğ‰ÌLäÎ†ÑĞ·ÜL
+äÎ†ÑĞ·ÜL Ï†Ñ€äL
+ Ï†Ñ€äLÜÏ†ÑÀŒúL
+ÜÏ†ÑÀŒúL˜Ğ†ÑØûüL
+´éÂ˜’Ş¼´Ğ†Ñ˜’Ş¼
+´Ğ†Ñ˜’Ş¼ÔĞ†Ñ°Ş˜M
+ÔĞ†Ñ°Ş˜MÑ†Ñğ„¡M
+Ñ†Ñğ„¡MÌÑ†ÑÀü¨M
+ÌÑ†ÑÀü¨MˆÒ†Ñàú³M
+ˆÒ†Ñàú³MÄÒ†ÑÈ—­M
+ÄÒ†ÑÈ—­M€Ó†ÑØšÆM
+€Ó†ÑØšÆM¼Ó†Ñ˜¾ÏM2»
+‹
+patient_medicationehr_feature_storepatient"
+lisinopril_count"
+metformin_count"
+amoxicillin_count"
+atorvastatin_count2€ç„:Ü
+feature_timestampŠOfeast.infra.offline_stores.contrib.trino_offline_store.trino_source.TrinoSource¢feat_patient_medication_6mò75(SELECT * FROM delta.gold.feat_patient_medication_6m)’¬†Ñà†âf"³Ğ†ÑˆŸ»€@b
+
+patient_id’latestª
+¬†Ñ¸§”´¼Ó†ÑèÛµß
+ŸÈÂ°×ÛìŸ¯†Ñ°×Ûì
+Ÿ¯†Ñ°×Ûì¨Î†Ñğ‰ÌL
+¨Î†Ñğ‰ÌLäÎ†ÑĞ·ÜL
+äÎ†ÑĞ·ÜL Ï†Ñ€äL
+ Ï†Ñ€äLÜÏ†ÑÀŒúL
+ÜÏ†ÑÀŒúL˜Ğ†ÑØûüL
+´éÂ˜’Ş¼´Ğ†Ñ˜’Ş¼
+´Ğ†Ñ˜’Ş¼ÔĞ†Ñ°Ş˜M
+ÔĞ†Ñ°Ş˜MÑ†Ñğ„¡M
+Ñ†Ñğ„¡MÌÑ†ÑÀü¨M
+ÌÑ†ÑÀü¨MˆÒ†Ñàú³M
+ˆÒ†Ñàú³MÄÒ†ÑÈ—­M
+ÄÒ†ÑÈ—­M€Ó†ÑØšÆM
+€Ó†ÑØšÆM¼Ó†Ñ˜¾ÏM2œ
+
+ì
+patient_vitalsehr_feature_storepatient"
+heart_rate_mean"
+heart_rate_min"
+heart_rate_max"
+heart_rate_std"
+systolic_bp_mean"
+systolic_bp_min"
+systolic_bp_max"
+systolic_bp_std"
+diastolic_bp_mean"
+diastolic_bp_min"
+diastolic_bp_max"
+diastolic_bp_std"
+temperature_mean"
+temperature_min"
+temperature_max"
+temperature_std2€ç„:Ô
+feature_timestampŠOfeast.infra.offline_stores.contrib.trino_offline_store.trino_source.TrinoSource¢feat_patient_vitals_6mò31(SELECT * FROM delta.gold.feat_patient_vitals_6m)’¬†Ñ°ºÖf"³Ğ†Ñˆ¸†@Jğ	feature_timestampŠfeast.data_source.PushSource¢patient_vitals_streamÒ‚
+feature_timestamp¢feat_patient_vitals_6mò31(SELECT * FROM delta.gold.feat_patient_vitals_6m)’¬†Ñ°ºÖf"³Ğ†Ñˆ¸†’¬†Ñ°ìïf"³Ğ†Ñ¨»¿ÿb
+
+patient_id’latestª
+¬†Ñ¨°ô´¼Ó†Ñ˜›Ù
+ŸÈÂ°×ÛìŸ¯†Ñ°×Ûì
+Ÿ¯†Ñ°×Ûì¨Î†Ñğ‰ÌL
+¨Î†Ñğ‰ÌLäÎ†ÑĞ·ÜL
+äÎ†ÑĞ·ÜL Ï†Ñ€äL
+ Ï†Ñ€äLÜÏ†ÑÀŒúL
+ÜÏ†ÑÀŒúL˜Ğ†ÑØûüL
+´éÂ˜’Ş¼´Ğ†Ñ˜’Ş¼
+´Ğ†Ñ˜’Ş¼ÔĞ†Ñ°Ş˜M
+ÔĞ†Ñ°Ş˜MÑ†Ñğ„¡M
+Ñ†Ñğ„¡MÌÑ†ÑÀü¨M
+ÌÑ†ÑÀü¨MˆÒ†Ñàú³M
+ˆÒ†Ñàú³MÄÒ†ÑÈ—­M
+ÄÒ†ÑÈ—­M€Ó†ÑØšÆM
+€Ó†ÑØšÆM¼Ó†Ñ˜¾ÏM2ë
+»
+patient_labsehr_feature_storepatient"
+glucose_mean"
+glucose_min"
+glucose_max"
+glucose_std"
+creatinine_mean"
+creatinine_min"
+creatinine_max"
+creatinine_std"
+wbc_mean"
+wbc_min"
+wbc_max"
+wbc_std"
+hemoglobin_mean"
+hemoglobin_min"
+hemoglobin_max"
+hemoglobin_std2€ç„:Ğ
+feature_timestampŠOfeast.infra.offline_stores.contrib.trino_offline_store.trino_source.TrinoSource¢feat_patient_labs_6mò1/(SELECT * FROM delta.gold.feat_patient_labs_6m)’¬†ÑØñÛf"³Ğ†ÑØ­å€@b
+
+patient_id’latestª
+¬†Ñ€¼¬µ¼Ó†ÑØÿ„¶
+ŸÈÂ°×ÛìŸ¯†Ñ°×Ûì
+Ÿ¯†Ñ°×Ûì¨Î†Ñğ‰ÌL
+¨Î†Ñğ‰ÌLäÎ†ÑĞ·ÜL
+äÎ†ÑĞ·ÜL Ï†Ñ€äL
+ Ï†Ñ€äLÜÏ†ÑÀŒúL
+ÜÏ†ÑÀŒúL˜Ğ†ÑØûüL
+´éÂ˜’Ş¼´Ğ†Ñ˜’Ş¼
+´Ğ†Ñ˜’Ş¼ÔĞ†Ñ°Ş˜M
+ÔĞ†Ñ°Ş˜MÑ†Ñğ„¡M
+Ñ†Ñğ„¡MÌÑ†ÑÀü¨M
+ÌÑ†ÑÀü¨MˆÒ†Ñàú³M
+ˆÒ†Ñàú³MÄÒ†ÑÈ—­M
+ÄÒ†ÑÈ—­M€Ó†ÑØšÆM
+€Ó†ÑØšÆM¼Ó†Ñ˜¾ÏM:ƒ
+â
+patient_training_v1ehr_feature_storeé
+patient_vitals
+heart_rate_mean
+heart_rate_min
+heart_rate_max
+heart_rate_std
+systolic_bp_mean
+systolic_bp_min
+systolic_bp_max
+systolic_bp_std
+diastolic_bp_mean
+diastolic_bp_min
+diastolic_bp_max
+diastolic_bp_std
+temperature_mean
+temperature_min
+temperature_max
+temperature_stdB‚
+feature_timestamp¢feat_patient_vitals_6mò31(SELECT * FROM delta.gold.feat_patient_vitals_6m)’¬†Ñ°ºÖf"³Ğ†Ñˆ¸†ª
+patient_labs
+glucose_mean
+glucose_min
+glucose_max
+glucose_std
+creatinine_mean
+creatinine_min
+creatinine_max
+creatinine_std
+wbc_mean
+wbc_min
+wbc_max
+wbc_std
+hemoglobin_mean
+hemoglobin_min
+hemoglobin_max
+hemoglobin_stdB~
+feature_timestamp¢feat_patient_labs_6mò1/(SELECT * FROM delta.gold.feat_patient_labs_6m)’¬†ÑØñÛf"³Ğ†ÑØ­å€
+patient_icd
+
+icd_chap_I
+icd_chap_II
+icd_chap_III
+icd_chap_IV
+
+icd_chap_V
+icd_chap_VI
+icd_chap_VII
+icd_chap_VIII
+icd_chap_IX
+
+icd_chap_X
+icd_chap_XI
+icd_chap_XII
+icd_chap_XIII
+icd_chap_XIV
+icd_chap_XV
+icd_chap_XVI
+icd_chap_XVII
+icd_chap_XVIII
+icd_chap_XIX
+icd_chap_XX
+icd_chap_XXI
+icd_chap_XXIIB|
+feature_timestamp¢feat_patient_icd_6mò0.(SELECT * FROM delta.gold.feat_patient_icd_6m)’¬†Ñàßf"³Ğ†Ñˆ„Áû
+patient_medication
+lisinopril_count
+metformin_count
+amoxicillin_count
+atorvastatin_countBŠ
+feature_timestamp¢feat_patient_medication_6mò75(SELECT * FROM delta.gold.feat_patient_medication_6m)’¬†Ñà†âf"³Ğ†ÑˆŸ»€à
+patient_demographics
+
+gender
+
+ethnic
+country
+age
+is_deceasedBˆ
+feature_timestamp¢feat_patient_demographicsò64(SELECT * FROM delta.gold.feat_patient_demographics)’¬†Ñ€åf"³Ğ†Ñ Ó¤ª
+patient_labels
+visit_id
+admission_timestamp
+discharge_timestamp
+severity_level
+is_readmitted_7d
+has_inpatient_mortality
+has_30day_mortalityBx
+feature_timestamp¢gold_visit_labelsò.,(SELECT * FROM delta.gold.gold_visit_labels)’¬†Ñ˜Œèf"³Ğ†Ñ˜•…€
+¬†ÑøËíµ³Ğ†Ñˆì§Œ:Ù
+¸
+patient_ml_features_v1ehr_feature_storeé
+patient_vitals
+heart_rate_mean
+heart_rate_min
+heart_rate_max
+heart_rate_std
+systolic_bp_mean
+systolic_bp_min
+systolic_bp_max
+systolic_bp_std
+diastolic_bp_mean
+diastolic_bp_min
+diastolic_bp_max
+diastolic_bp_std
+temperature_mean
+temperature_min
+temperature_max
+temperature_stdB‚
+feature_timestamp¢feat_patient_vitals_6mò31(SELECT * FROM delta.gold.feat_patient_vitals_6m)’¬†Ñ°ºÖf"³Ğ†Ñˆ¸†ª
+patient_labs
+glucose_mean
+glucose_min
+glucose_max
+glucose_std
+creatinine_mean
+creatinine_min
+creatinine_max
+creatinine_std
+wbc_mean
+wbc_min
+wbc_max
+wbc_std
+hemoglobin_mean
+hemoglobin_min
+hemoglobin_max
+hemoglobin_stdB~
+feature_timestamp¢feat_patient_labs_6mò1/(SELECT * FROM delta.gold.feat_patient_labs_6m)’¬†ÑØñÛf"³Ğ†ÑØ­å€
+patient_icd
+
+icd_chap_I
+icd_chap_II
+icd_chap_III
+icd_chap_IV
+
+icd_chap_V
+icd_chap_VI
+icd_chap_VII
+icd_chap_VIII
+icd_chap_IX
+
+icd_chap_X
+icd_chap_XI
+icd_chap_XII
+icd_chap_XIII
+icd_chap_XIV
+icd_chap_XV
+icd_chap_XVI
+icd_chap_XVII
+icd_chap_XVIII
+icd_chap_XIX
+icd_chap_XX
+icd_chap_XXI
+icd_chap_XXIIB|
+feature_timestamp¢feat_patient_icd_6mò0.(SELECT * FROM delta.gold.feat_patient_icd_6m)’¬†Ñàßf"³Ğ†Ñˆ„Áû
+patient_medication
+lisinopril_count
+metformin_count
+amoxicillin_count
+atorvastatin_countBŠ
+feature_timestamp¢feat_patient_medication_6mò75(SELECT * FROM delta.gold.feat_patient_medication_6m)’¬†Ñà†âf"³Ğ†ÑˆŸ»€à
+patient_demographics
+
+gender
+
+ethnic
+country
+age
+is_deceasedBˆ
+feature_timestamp¢feat_patient_demographicsò64(SELECT * FROM delta.gold.feat_patient_demographics)’¬†Ñ€åf"³Ğ†Ñ Ó¤
+¬†Ñ€¤±¶³Ğ†Ñğ¨ºb…	feature_timestampŠfeast.data_source.PushSource¢patient_vitals_streamªehr_feature_storeÒƒ
+feature_timestamp¢feat_patient_vitals_6mò31(SELECT * FROM delta.gold.feat_patient_vitals_6m)’²Ğ†Ñè“§¼"²Ğ†Ñè“§¼’¬†Ñ°ìïf"³Ğ†Ñ¨»¿ÿbŞ
+feature_timestampŠOfeast.infra.offline_stores.contrib.trino_offline_store.trino_source.TrinoSource¢gold_visit_labelsªehr_feature_storeò.,(SELECT * FROM delta.gold.gold_visit_labels)’¬†Ñ˜Œèf"³Ğ†Ñ˜•…€bğ
+feature_timestampŠOfeast.infra.offline_stores.contrib.trino_offline_store.trino_source.TrinoSource¢feat_patient_medication_6mªehr_feature_storeò75(SELECT * FROM delta.gold.feat_patient_medication_6m)’¬†Ñà†âf"³Ğ†ÑˆŸ»€bä
+feature_timestampŠOfeast.infra.offline_stores.contrib.trino_offline_store.trino_source.TrinoSource¢feat_patient_labs_6mªehr_feature_storeò1/(SELECT * FROM delta.gold.feat_patient_labs_6m)’¬†ÑØñÛf"³Ğ†ÑØ­å€bè
+feature_timestampŠOfeast.infra.offline_stores.contrib.trino_offline_store.trino_source.TrinoSource¢feat_patient_vitals_6mªehr_feature_storeò31(SELECT * FROM delta.gold.feat_patient_vitals_6m)’¬†Ñ°ºÖf"³Ğ†Ñˆ¸†bî
+feature_timestampŠOfeast.infra.offline_stores.contrib.trino_offline_store.trino_source.TrinoSource¢feat_patient_demographicsªehr_feature_storeò64(SELECT * FROM delta.gold.feat_patient_demographics)’¬†Ñ€åf"³Ğ†Ñ Ó¤bâ
+feature_timestampŠOfeast.infra.offline_stores.contrib.trino_offline_store.trino_source.TrinoSource¢feat_patient_icd_6mªehr_feature_storeò0.(SELECT * FROM delta.gold.feat_patient_icd_6m)’¬†Ñàßf"³Ğ†Ñˆ„ÁŠe
+F
+ehr_feature_store1This Feast project is a Trino Offline Store demo.
+¬†Ñè†éh²Ğ†ÑØ“„¿’Ë 
+€
+patient_demographicsehr_feature_store"feature_view*’
+ñ
+patient_demographicsehr_feature_storepatient"
+
+gender"
+
+ethnic"
+country"
+age"
+is_deceased2€†°–:Ú
+feature_timestampŠOfeast.infra.offline_stores.contrib.trino_offline_store.trino_source.TrinoSource¢feat_patient_demographicsò64(SELECT * FROM delta.gold.feat_patient_demographics)’¬†Ñ€åf"¬†Ñ°Ñü²@b
+
+patient_id’latest
+¬†ÑÈ¥ˆ³¬†ÑÈ¥ˆ³2¬†ÑÀÙ½³B$afe30218-19bb-4c72-81d2-326932adacd9
+§
+patient_icdehr_feature_store"feature_view*Â
+¡
+patient_icdehr_feature_storepatient"
+
+icd_chap_I"
+icd_chap_II"
+icd_chap_III"
+icd_chap_IV"
+
+icd_chap_V"
+icd_chap_VI"
+icd_chap_VII"
+icd_chap_VIII"
+icd_chap_IX"
+
+icd_chap_X"
+icd_chap_XI"
+icd_chap_XII"
+icd_chap_XIII"
+icd_chap_XIV"
+icd_chap_XV"
+icd_chap_XVI"
+icd_chap_XVII"
+icd_chap_XVIII"
+icd_chap_XIX"
+icd_chap_XX"
+icd_chap_XXI"
+icd_chap_XXII2€ç„:Î
+feature_timestampŠOfeast.infra.offline_stores.contrib.trino_offline_store.trino_source.TrinoSource¢feat_patient_icd_6mò0.(SELECT * FROM delta.gold.feat_patient_icd_6m)’¬†Ñàßf"¬†ÑÈ‹ç²@b
+
+patient_id’latest
+¬†Ñ¸¦Á³¬†Ñ¸¦Á³2¬†Ñè ‘´B$ce101bf2-e37b-4340-8f33-2d3cb4e33058
+˜
+patient_medicationehr_feature_store"feature_view*¬
+‹
+patient_medicationehr_feature_storepatient"
+lisinopril_count"
+metformin_count"
+amoxicillin_count"
+atorvastatin_count2€ç„:Ü
+feature_timestampŠOfeast.infra.offline_stores.contrib.trino_offline_store.trino_source.TrinoSource¢feat_patient_medication_6mò75(SELECT * FROM delta.gold.feat_patient_medication_6m)’¬†Ñà†âf"¬†Ñ¨©©²@b
+
+patient_id’latest
+¬†Ñ¸§”´¬†Ñ¸§”´2¬†Ñˆ¹½´B$09dd14b1-01bc-492d-aec0-5aabb741994f
+Ã
+patient_labelsehr_feature_store"feature_view*Û
+º
+patient_labelsehr_feature_storepatient"
+visit_id"
+admission_timestamp"
+discharge_timestamp"
+severity_level"
+is_readmitted_7d"
+has_inpatient_mortality"
+has_30day_mortality2€†°–:Ê
+feature_timestampŠOfeast.infra.offline_stores.contrib.trino_offline_store.trino_source.TrinoSource¢gold_visit_labelsò.,(SELECT * FROM delta.gold.gold_visit_labels)’¬†Ñ˜Œèf"¬†ÑÈ¯Û²b
+
+patient_id’latest
+¬†ÑĞ˜À´¬†ÑĞ˜À´2¬†ÑøÈñ´B$7730cb7a-1c2f-46ff-a531-5981a03da92a
+õ
+patient_vitalsehr_feature_store"feature_view*
+ì
+patient_vitalsehr_feature_storepatient"
+heart_rate_mean"
+heart_rate_min"
+heart_rate_max"
+heart_rate_std"
+systolic_bp_mean"
+systolic_bp_min"
+systolic_bp_max"
+systolic_bp_std"
+diastolic_bp_mean"
+diastolic_bp_min"
+diastolic_bp_max"
+diastolic_bp_std"
+temperature_mean"
+temperature_min"
+temperature_max"
+temperature_std2€ç„:Ô
+feature_timestampŠOfeast.infra.offline_stores.contrib.trino_offline_store.trino_source.TrinoSource¢feat_patient_vitals_6mò31(SELECT * FROM delta.gold.feat_patient_vitals_6m)’¬†Ñ°ºÖf"¬†ÑÀ¬Ï²@Jğ	feature_timestampŠfeast.data_source.PushSource¢patient_vitals_streamÒ‚
+feature_timestamp¢feat_patient_vitals_6mò31(SELECT * FROM delta.gold.feat_patient_vitals_6m)’¬†Ñ°ºÖf"¬†ÑÀ¬Ï²’¬†Ñ°ìïf"¬†ÑÈŒ½²b
+
+patient_id’latest
+¬†Ñ¨°ô´¬†Ñ¨°ô´2¬†Ñ€ÂªµB$cad51a7b-2b39-4353-98c2-4d49cdae4686
+Â
+patient_labsehr_feature_store"feature_view*Ü
+»
+patient_labsehr_feature_storepatient"
+glucose_mean"
+glucose_min"
+glucose_max"
+glucose_std"
+creatinine_mean"
+creatinine_min"
+creatinine_max"
+creatinine_std"
+wbc_mean"
+wbc_min"
+wbc_max"
+wbc_std"
+hemoglobin_mean"
+hemoglobin_min"
+hemoglobin_max"
+hemoglobin_std2€ç„:Ğ
+feature_timestampŠOfeast.infra.offline_stores.contrib.trino_offline_store.trino_source.TrinoSource¢feat_patient_labs_6mò1/(SELECT * FROM delta.gold.feat_patient_labs_6m)’¬†ÑØñÛf"¬†Ñè‰ò²@b
+
+patient_id’latest
+¬†Ñ€¼¬µ¬†Ñ€¼¬µ2¬†ÑˆåÕµB$232b91d1-f6f7-4ddd-95f3-3b808a8f8357

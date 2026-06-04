@@ -1,0 +1,129 @@
+[2026-06-04T13:50:57.044+0000] {local_task_job_runner.py:123} INFO - ::group::Pre task execution logs
+[2026-06-04T13:50:57.069+0000] {taskinstance.py:2612} INFO - Dependencies all met for dep_context=non-requeueable deps ti=<TaskInstance: ehr_data_pipeline.validate_bronze manual__2026-06-04T13:50:38.032166+00:00 [queued]>
+[2026-06-04T13:50:57.091+0000] {taskinstance.py:2612} INFO - Dependencies all met for dep_context=requeueable deps ti=<TaskInstance: ehr_data_pipeline.validate_bronze manual__2026-06-04T13:50:38.032166+00:00 [queued]>
+[2026-06-04T13:50:57.092+0000] {taskinstance.py:2865} INFO - Starting attempt 1 of 1
+[2026-06-04T13:50:57.137+0000] {taskinstance.py:2888} INFO - Executing <Task(PythonOperator): validate_bronze> on 2026-06-04 13:50:38.032166+00:00
+[2026-06-04T13:50:57.151+0000] {logging_mixin.py:190} WARNING - /home/***/.local/lib/python3.12/site-packages/***/task/task_runner/standard_task_runner.py:70 DeprecationWarning: This process (pid=980) is multi-threaded, use of fork() may lead to deadlocks in the child.
+[2026-06-04T13:50:57.150+0000] {standard_task_runner.py:104} INFO - Running: ['***', 'tasks', 'run', 'ehr_data_pipeline', 'validate_bronze', 'manual__2026-06-04T13:50:38.032166+00:00', '--job-id', '22', '--raw', '--subdir', 'DAGS_FOLDER/ehr_data_pipeline.py', '--cfg-path', '/tmp/tmp31ltn5u6']
+[2026-06-04T13:50:57.152+0000] {standard_task_runner.py:72} INFO - Started process 981 to run task
+[2026-06-04T13:50:57.152+0000] {standard_task_runner.py:105} INFO - Job 22: Subtask validate_bronze
+[2026-06-04T13:50:57.207+0000] {task_command.py:467} INFO - Running <TaskInstance: ehr_data_pipeline.validate_bronze manual__2026-06-04T13:50:38.032166+00:00 [running]> on host g120.grove.adaptcentre.ie
+[2026-06-04T13:50:57.389+0000] {taskinstance.py:3131} INFO - Exporting env vars: AIRFLOW_CTX_DAG_OWNER='***' AIRFLOW_CTX_DAG_ID='ehr_data_pipeline' AIRFLOW_CTX_TASK_ID='validate_bronze' AIRFLOW_CTX_EXECUTION_DATE='2026-06-04T13:50:38.032166+00:00' AIRFLOW_CTX_TRY_NUMBER='1' AIRFLOW_CTX_DAG_RUN_ID='manual__2026-06-04T13:50:38.032166+00:00'
+[2026-06-04T13:50:57.394+0000] {taskinstance.py:731} INFO - ::endgroup::
+[2026-06-04T13:50:57.653+0000] {logging_mixin.py:190} INFO - [validate] raw_patients.row_count = 20,000  ✓
+[2026-06-04T13:50:57.903+0000] {logging_mixin.py:190} INFO - [validate] raw_patients.null_patient_id = 0  ✓
+[2026-06-04T13:50:58.200+0000] {logging_mixin.py:190} INFO - [validate] raw_patients.dup_patient_id = 10000  ✗ 
+[2026-06-04T13:50:58.375+0000] {logging_mixin.py:190} INFO - [validate] raw_visits.row_count = 100,000  ✓
+[2026-06-04T13:50:58.528+0000] {logging_mixin.py:190} INFO - [validate] raw_visits.null_visit_id = 0  ✓
+[2026-06-04T13:50:58.868+0000] {logging_mixin.py:190} INFO - [validate] raw_visits.dup_visit_id = 50000  ✗ 
+[2026-06-04T13:50:59.003+0000] {logging_mixin.py:190} INFO - [validate] raw_events.row_count = 306,000  ✓
+[2026-06-04T13:50:59.141+0000] {logging_mixin.py:190} INFO - [validate] raw_events.null_event_id = 0  ✓
+[2026-06-04T13:50:59.658+0000] {logging_mixin.py:190} INFO - [validate] raw_events.dup_event_id = 156000  ✗ (expected — will dedup in silver)
+[2026-06-04T13:50:59.805+0000] {logging_mixin.py:190} INFO - [validate] raw_wards.row_count = 8  ✓
+[2026-06-04T13:50:59.998+0000] {logging_mixin.py:190} INFO - [validate] raw_wards.null_ward_id = 0  ✓
+[2026-06-04T13:51:00.169+0000] {logging_mixin.py:190} INFO - [validate] raw_wards.dup_ward_id = 4  ✗ 
+[2026-06-04T13:51:00.280+0000] {logging_mixin.py:190} INFO - [validate] raw_event_metadata.row_count = 34  ✓
+[2026-06-04T13:51:00.387+0000] {logging_mixin.py:190} INFO - [validate] raw_event_metadata.null_event_type_id = 0  ✓
+[2026-06-04T13:51:00.539+0000] {logging_mixin.py:190} INFO - [validate] raw_event_metadata.dup_event_type_id = 17  ✗ 
+[2026-06-04T13:51:00.548+0000] {logging_mixin.py:190} INFO - [run-meta] validate_bronze → SUCCESS  run_id=0c30acc9-e90f-4d09-b949-7586e7e4a79c
+[2026-06-04T13:51:00.550+0000] {taskinstance.py:3310} ERROR - Task failed with exception
+Traceback (most recent call last):
+  File "/home/airflow/.local/lib/python3.12/site-packages/airflow/models/taskinstance.py", line 767, in _execute_task
+    result = _execute_callable(context=context, **execute_callable_kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/airflow/.local/lib/python3.12/site-packages/airflow/models/taskinstance.py", line 733, in _execute_callable
+    return ExecutionCallableRunner(
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/airflow/.local/lib/python3.12/site-packages/airflow/utils/operator_helpers.py", line 252, in run
+    return self.func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/airflow/.local/lib/python3.12/site-packages/airflow/models/baseoperator.py", line 406, in wrapper
+    return func(self, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/airflow/.local/lib/python3.12/site-packages/airflow/operators/python.py", line 238, in execute
+    return_value = self.execute_callable()
+                   ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/airflow/.local/lib/python3.12/site-packages/airflow/operators/python.py", line 256, in execute_callable
+    return runner.run(*self.op_args, **self.op_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/airflow/.local/lib/python3.12/site-packages/airflow/utils/operator_helpers.py", line 252, in run
+    return self.func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/airflow/dags/ehr_data_pipeline.py", line 525, in validate_bronze
+    raise ValueError(f"Bronze quality checks FAILED:\n" + "\n".join(f"  • {f}" for f in failures))
+ValueError: Bronze quality checks FAILED:
+  • raw_patients: 10000 duplicate patient_id values
+  • raw_visits: 50000 duplicate visit_id values
+  • raw_wards: 4 duplicate ward_id values
+  • raw_event_metadata: 17 duplicate event_type_id values
+[2026-06-04T13:51:00.560+0000] {taskinstance.py:1225} INFO - Marking task as FAILED. dag_id=ehr_data_pipeline, task_id=validate_bronze, run_id=manual__2026-06-04T13:50:38.032166+00:00, execution_date=20260604T135038, start_date=20260604T135057, end_date=20260604T135100
+[2026-06-04T13:51:00.572+0000] {taskinstance.py:340} INFO - ::group::Post task execution logs
+[2026-06-04T13:51:00.572+0000] {standard_task_runner.py:124} ERROR - Failed to execute job 22 for task validate_bronze (Bronze quality checks FAILED:
+  • raw_patients: 10000 duplicate patient_id values
+  • raw_visits: 50000 duplicate visit_id values
+  • raw_wards: 4 duplicate ward_id values
+  • raw_event_metadata: 17 duplicate event_type_id values; 981)
+Traceback (most recent call last):
+  File "/home/airflow/.local/lib/python3.12/site-packages/airflow/task/task_runner/standard_task_runner.py", line 117, in _start_by_fork
+    ret = args.func(args, dag=self.dag)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/airflow/.local/lib/python3.12/site-packages/airflow/cli/cli_config.py", line 49, in command
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/airflow/.local/lib/python3.12/site-packages/airflow/utils/cli.py", line 115, in wrapper
+    return f(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^
+  File "/home/airflow/.local/lib/python3.12/site-packages/airflow/cli/commands/task_command.py", line 483, in task_run
+    task_return_code = _run_task_by_selected_method(args, _dag, ti)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/airflow/.local/lib/python3.12/site-packages/airflow/cli/commands/task_command.py", line 256, in _run_task_by_selected_method
+    return _run_raw_task(args, ti)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/airflow/.local/lib/python3.12/site-packages/airflow/cli/commands/task_command.py", line 341, in _run_raw_task
+    return ti._run_raw_task(
+           ^^^^^^^^^^^^^^^^^
+  File "/home/airflow/.local/lib/python3.12/site-packages/airflow/utils/session.py", line 97, in wrapper
+    return func(*args, session=session, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/airflow/.local/lib/python3.12/site-packages/airflow/models/taskinstance.py", line 3004, in _run_raw_task
+    return _run_raw_task(
+           ^^^^^^^^^^^^^^
+  File "/home/airflow/.local/lib/python3.12/site-packages/airflow/models/taskinstance.py", line 273, in _run_raw_task
+    TaskInstance._execute_task_with_callbacks(
+  File "/home/airflow/.local/lib/python3.12/site-packages/airflow/models/taskinstance.py", line 3158, in _execute_task_with_callbacks
+    result = self._execute_task(context, task_orig)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/airflow/.local/lib/python3.12/site-packages/airflow/models/taskinstance.py", line 3182, in _execute_task
+    return _execute_task(self, context, task_orig)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/airflow/.local/lib/python3.12/site-packages/airflow/models/taskinstance.py", line 767, in _execute_task
+    result = _execute_callable(context=context, **execute_callable_kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/airflow/.local/lib/python3.12/site-packages/airflow/models/taskinstance.py", line 733, in _execute_callable
+    return ExecutionCallableRunner(
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/airflow/.local/lib/python3.12/site-packages/airflow/utils/operator_helpers.py", line 252, in run
+    return self.func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/airflow/.local/lib/python3.12/site-packages/airflow/models/baseoperator.py", line 406, in wrapper
+    return func(self, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/airflow/.local/lib/python3.12/site-packages/airflow/operators/python.py", line 238, in execute
+    return_value = self.execute_callable()
+                   ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/airflow/.local/lib/python3.12/site-packages/airflow/operators/python.py", line 256, in execute_callable
+    return runner.run(*self.op_args, **self.op_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/airflow/.local/lib/python3.12/site-packages/airflow/utils/operator_helpers.py", line 252, in run
+    return self.func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/airflow/dags/ehr_data_pipeline.py", line 525, in validate_bronze
+    raise ValueError(f"Bronze quality checks FAILED:\n" + "\n".join(f"  • {f}" for f in failures))
+ValueError: Bronze quality checks FAILED:
+  • raw_patients: 10000 duplicate patient_id values
+  • raw_visits: 50000 duplicate visit_id values
+  • raw_wards: 4 duplicate ward_id values
+  • raw_event_metadata: 17 duplicate event_type_id values
+[2026-06-04T13:51:00.586+0000] {local_task_job_runner.py:266} INFO - Task exited with return code 1
+[2026-06-04T13:51:00.602+0000] {taskinstance.py:3900} INFO - 0 downstream tasks scheduled from follow-on schedule check
+[2026-06-04T13:51:00.608+0000] {local_task_job_runner.py:245} INFO - ::endgroup::

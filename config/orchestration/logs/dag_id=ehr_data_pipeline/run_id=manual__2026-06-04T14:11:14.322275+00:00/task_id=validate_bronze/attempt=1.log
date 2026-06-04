@@ -1,0 +1,35 @@
+[2026-06-04T14:11:21.102+0000] {local_task_job_runner.py:123} INFO - ::group::Pre task execution logs
+[2026-06-04T14:11:21.123+0000] {taskinstance.py:2612} INFO - Dependencies all met for dep_context=non-requeueable deps ti=<TaskInstance: ehr_data_pipeline.validate_bronze manual__2026-06-04T14:11:14.322275+00:00 [queued]>
+[2026-06-04T14:11:21.131+0000] {taskinstance.py:2612} INFO - Dependencies all met for dep_context=requeueable deps ti=<TaskInstance: ehr_data_pipeline.validate_bronze manual__2026-06-04T14:11:14.322275+00:00 [queued]>
+[2026-06-04T14:11:21.131+0000] {taskinstance.py:2865} INFO - Starting attempt 1 of 1
+[2026-06-04T14:11:21.148+0000] {taskinstance.py:2888} INFO - Executing <Task(PythonOperator): validate_bronze> on 2026-06-04 14:11:14.322275+00:00
+[2026-06-04T14:11:21.155+0000] {standard_task_runner.py:104} INFO - Running: ['***', 'tasks', 'run', 'ehr_data_pipeline', 'validate_bronze', 'manual__2026-06-04T14:11:14.322275+00:00', '--job-id', '35', '--raw', '--subdir', 'DAGS_FOLDER/ehr_data_pipeline.py', '--cfg-path', '/tmp/tmpq4p0dlnn']
+[2026-06-04T14:11:21.157+0000] {standard_task_runner.py:105} INFO - Job 35: Subtask validate_bronze
+[2026-06-04T14:11:21.159+0000] {logging_mixin.py:190} WARNING - /home/***/.local/lib/python3.12/site-packages/***/task/task_runner/standard_task_runner.py:70 DeprecationWarning: This process (pid=334) is multi-threaded, use of fork() may lead to deadlocks in the child.
+[2026-06-04T14:11:21.159+0000] {standard_task_runner.py:72} INFO - Started process 335 to run task
+[2026-06-04T14:11:21.201+0000] {task_command.py:467} INFO - Running <TaskInstance: ehr_data_pipeline.validate_bronze manual__2026-06-04T14:11:14.322275+00:00 [running]> on host g120.grove.adaptcentre.ie
+[2026-06-04T14:11:21.282+0000] {taskinstance.py:3131} INFO - Exporting env vars: AIRFLOW_CTX_DAG_OWNER='***' AIRFLOW_CTX_DAG_ID='ehr_data_pipeline' AIRFLOW_CTX_TASK_ID='validate_bronze' AIRFLOW_CTX_EXECUTION_DATE='2026-06-04T14:11:14.322275+00:00' AIRFLOW_CTX_TRY_NUMBER='1' AIRFLOW_CTX_DAG_RUN_ID='manual__2026-06-04T14:11:14.322275+00:00'
+[2026-06-04T14:11:21.283+0000] {taskinstance.py:731} INFO - ::endgroup::
+[2026-06-04T14:11:21.431+0000] {logging_mixin.py:190} INFO - [validate] raw_patients.row_count = 10,000  ✓
+[2026-06-04T14:11:21.521+0000] {logging_mixin.py:190} INFO - [validate] raw_patients.null_patient_id = 0  ✓
+[2026-06-04T14:11:21.679+0000] {logging_mixin.py:190} INFO - [validate] raw_patients.dup_patient_id = 0  ✓ 
+[2026-06-04T14:11:21.765+0000] {logging_mixin.py:190} INFO - [validate] raw_visits.row_count = 50,000  ✓
+[2026-06-04T14:11:21.885+0000] {logging_mixin.py:190} INFO - [validate] raw_visits.null_visit_id = 0  ✓
+[2026-06-04T14:11:22.067+0000] {logging_mixin.py:190} INFO - [validate] raw_visits.dup_visit_id = 0  ✓ 
+[2026-06-04T14:11:22.151+0000] {logging_mixin.py:190} INFO - [validate] raw_events.row_count = 153,000  ✓
+[2026-06-04T14:11:22.272+0000] {logging_mixin.py:190} INFO - [validate] raw_events.null_event_id = 0  ✓
+[2026-06-04T14:11:22.469+0000] {logging_mixin.py:190} INFO - [validate] raw_events.dup_event_id = 3000  ✗ (expected — will dedup in silver)
+[2026-06-04T14:11:22.537+0000] {logging_mixin.py:190} INFO - [validate] raw_wards.row_count = 4  ✓
+[2026-06-04T14:11:22.649+0000] {logging_mixin.py:190} INFO - [validate] raw_wards.null_ward_id = 0  ✓
+[2026-06-04T14:11:22.798+0000] {logging_mixin.py:190} INFO - [validate] raw_wards.dup_ward_id = 0  ✓ 
+[2026-06-04T14:11:22.910+0000] {logging_mixin.py:190} INFO - [validate] raw_event_metadata.row_count = 17  ✓
+[2026-06-04T14:11:22.998+0000] {logging_mixin.py:190} INFO - [validate] raw_event_metadata.null_event_type_id = 0  ✓
+[2026-06-04T14:11:23.110+0000] {logging_mixin.py:190} INFO - [validate] raw_event_metadata.dup_event_type_id = 0  ✓ 
+[2026-06-04T14:11:23.118+0000] {logging_mixin.py:190} INFO - [run-meta] validate_bronze → SUCCESS  run_id=b909d1c2-ac60-4730-9b82-0a0b8db14638
+[2026-06-04T14:11:23.120+0000] {logging_mixin.py:190} INFO - [validate] All bronze quality checks passed.
+[2026-06-04T14:11:23.121+0000] {python.py:240} INFO - Done. Returned value was: None
+[2026-06-04T14:11:23.128+0000] {taskinstance.py:340} INFO - ::group::Post task execution logs
+[2026-06-04T14:11:23.128+0000] {taskinstance.py:352} INFO - Marking task as SUCCESS. dag_id=ehr_data_pipeline, task_id=validate_bronze, run_id=manual__2026-06-04T14:11:14.322275+00:00, execution_date=20260604T141114, start_date=20260604T141121, end_date=20260604T141123
+[2026-06-04T14:11:23.180+0000] {local_task_job_runner.py:266} INFO - Task exited with return code 0
+[2026-06-04T14:11:23.200+0000] {taskinstance.py:3900} INFO - 1 downstream tasks scheduled from follow-on schedule check
+[2026-06-04T14:11:23.203+0000] {local_task_job_runner.py:245} INFO - ::endgroup::
