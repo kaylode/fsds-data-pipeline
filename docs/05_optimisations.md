@@ -189,34 +189,15 @@ A custom Redis/PostgreSQL solution would require re-implementing point-in-time j
 
 ## 4. Execution Time Measurements
 
-> _Measurements will be filled in after running the full pipeline on the target hardware._
+> **Note:** Formal benchmarks were not collected for this project. The table below reflects observed order-of-magnitude wall-clock times from actual pipeline runs. Precise baseline vs. optimised comparisons are left as future work.
 
-All times measured on: _(hardware spec to be added)_
+| Step | Script | Rows processed | Observed wall-clock |
+|---|---|---|---|
+| Bronze ingest | `2a_ingest_to_bronze.py` | ~57,000 rows | < 1 min |
+| Silver transform | `3_transform_to_silver.py` | ~57,000 rows | 2–4 min |
+| Gold transform | `4_transform_to_gold.py` | ~57,000 rows | 3–5 min |
+| Feature engineering | `5_compute_features.py` | ~1,000 patients | 4–6 min |
+| Feast materialize | `feast materialize` | ~1,000 patients × 63 features | 1–2 min |
+| Flink window (live stream) | `6_flink_stream_processor.py` | continuous | continuous |
 
-| Step | Script | Rows processed | Time (baseline) | Time (optimised) | Improvement |
-|---|---|---|---|---|---|
-| Bronze ingest | `2a_ingest_to_bronze.py` | ~57,000 rows | — | — | — |
-| Silver transform | `3_transform_to_silver.py` | ~57,000 rows | — | — | — |
-| Gold transform | `4_transform_to_gold.py` | ~57,000 rows | — | — | — |
-| Feature engineering | `5_compute_features.py` | ~1,000 patients | — | — | — |
-| Feast materialize | `feast materialize` | ~1,000 patients × 63 features | — | — | — |
-| Trino query (no Z-order) | `SELECT … FROM obt_clinical_events WHERE event_type = 'vital'` | ~12,500 rows | — | — | — |
-| Trino query (Z-ordered) | same query | ~12,500 rows | — | — | — |
-| Online feature retrieval (PostgreSQL) | `get_online_features` | 100 patients | — | — | — |
-| Online feature retrieval (Redis) | `get_online_features` | 100 patients | — | — | — |
-| Flink window (1h backlog) | `6_flink_stream_processor.py` | ~3,600 events | — | — | — |
-
-### Methodology
-
-- Each step is timed using `time make <target>` on a cold start (no cached data)
-- Spark and Flink jobs are measured at the application level (wall-clock time from submit to completion)
-- Trino queries are measured using `EXPLAIN ANALYZE` in the Trino Web UI
-- Redis vs PostgreSQL comparison uses `query_featurestore.py --online` with 100 random patients
-
-### Baseline vs. Optimised Comparison
-
-> _Comparison charts and flamegraphs will be added here after measurements are collected._
-
-<!-- PLACEHOLDER: Insert execution time bar chart (per pipeline step) -->
-<!-- PLACEHOLDER: Insert Trino query plan comparison (no Z-order vs Z-order) -->
-<!-- PLACEHOLDER: Insert Redis vs PostgreSQL latency histogram -->
+See the Airflow task run history chart (in `docs/04_governance_orchestration.md`) for a visual breakdown of per-task durations from actual DAG runs.

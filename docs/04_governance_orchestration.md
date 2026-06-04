@@ -58,10 +58,10 @@ Crawls all data sources and pushes catalogue metadata to DataHub GMS.
 | Task | Source crawled |
 |---|---|
 | `ingest_postgres` | Postgres schemas and tables |
-| `ingest_kafka` | Kafka topics and Avro schemas |
-| `ingest_trino` | All Delta Lake tables via Trino catalog |
-| `ingest_minio_lakehouse` | S3 paths in `s3://lakehouse/` |
-| `ingest_feast` | Feast feature views and entities |
+| `ingest_kafka` | Kafka topics and Schema Registry |
+| `ingest_hive_metastore` | Hive Metastore catalog (Delta table mappings for Trino) |
+| `ingest_trino` | All Delta Lake tables via Trino `delta` catalog |
+| `ingest_minio_lakehouse` | S3 paths under `s3://lakehouse/` |
 
 > **Note:** The schedule can be changed in `config/orchestration/dags/datahub_ingestion.py` (`schedule_interval`). Default is `*/5 * * * *` (every 5 min) for development; change to `0 */6 * * *` for production.
 
@@ -88,13 +88,9 @@ Browse via pgweb at http://localhost:8085.
 
 ---
 
-### Airflow Screenshots
+### Airflow DAG — Task Run History
 
-> _Demo screenshots of the Airflow UI will be added here._
-
-<!-- PLACEHOLDER: Insert screenshot of DAG graph view (ehr_data_pipeline) -->
-<!-- PLACEHOLDER: Insert screenshot of task run history / Gantt view -->
-<!-- PLACEHOLDER: Insert screenshot of datahub_metadata_ingestion DAG -->
+![Airflow DAG — ehr_data_pipeline task run history](../artifacts/airflow_dag.png)
 
 ---
 
@@ -173,7 +169,7 @@ Assertion results are visible in DataHub under each dataset's **Assertions** tab
 
 ### Metadata Enrichment
 
-Run `make datahub-enrich` to push rich metadata to DataHub for all 22 datasets. This is also run automatically as part of `make datahub-up`.
+Run `make datahub-enrich` to push rich metadata to DataHub for all tracked datasets. This is also run automatically as part of `make datahub-up`.
 
 The enrichment script (`scripts/misc/datahub_enrich_metadata.py`) sets:
 
@@ -188,13 +184,17 @@ The enrichment script (`scripts/misc/datahub_enrich_metadata.py`) sets:
 
 ### DataHub Screenshots
 
-> _Demo screenshots of the DataHub UI will be added here._
+**Registered data sources (postgres, kafka, hive, trino, minio):**
 
-<!-- PLACEHOLDER: Insert screenshot of dataset catalogue (bronze layer) -->
-<!-- PLACEHOLDER: Insert screenshot of lineage graph (full pipeline) -->
-<!-- PLACEHOLDER: Insert screenshot of quality assertion results -->
-<!-- PLACEHOLDER: Insert screenshot of dataset metadata page (docs, owners, tags) -->
-<!-- PLACEHOLDER: Insert screenshot of domain view (healthcare / machine-learning) -->
+![DataHub — Manage Data Sources](../artifacts/datahub_source.png)
+
+**Pipeline lineage graph (ehr_data_pipeline → feat_* → online store):**
+
+![DataHub — ehr_data_pipeline Lineage](../artifacts/datahub_lineage.png)
+
+**Dataset schema view:**
+
+![DataHub — Dataset Schema](../artifacts/datahub_schema.png)
 
 ---
 

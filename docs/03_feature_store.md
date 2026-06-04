@@ -214,9 +214,12 @@ patient = Entity(name="patient", join_keys=["patient_id"])
 
 ### Retrieval example
 
+> **Path note:** When running from the host, the repo path is `config/feature_store` (relative to the project root). Inside the Airflow container, the path is `/opt/airflow/feature_store` (controlled by the `FEAST_REPO_DIR` env var).
+
 ```python
 from feast import FeatureStore
 
+# Host (running via uv run scripts/main/query_featurestore.py)
 store = FeatureStore(repo_path="config/feature_store")
 
 # Online (real-time inference)
