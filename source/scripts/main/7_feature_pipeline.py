@@ -50,7 +50,7 @@ script_dir   = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.abspath(os.path.join(script_dir, "..", ".."))
 load_dotenv(os.path.join(project_root, ".env"))
 
-FEATURE_STORE_DIR = os.path.join(project_root, "config", "feature_store")
+FEATURE_STORE_DIR = os.getenv("FEAST_REPO_DIR", os.path.join(project_root, "config", "feature_store"))
 
 KAFKA_PORT        = os.getenv("KAFKA_PORT", "9092")
 BOOTSTRAP_SERVERS = f"localhost:{KAFKA_PORT}"

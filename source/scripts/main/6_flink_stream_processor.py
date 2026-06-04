@@ -55,7 +55,11 @@ WINDOW_SIZE_MINS   = int(os.getenv("WINDOW_SIZE_MINS", "5"))
 WINDOW_SLIDE_SECS  = int(os.getenv("WINDOW_SLIDE_SECS", "10"))
 WATERMARK_LAG_SECS = int(os.getenv("WATERMARK_LAG_SECS", "5"))
 
-_FLINK_LIB = os.path.join(project_root, "..", ".tmp", "flink-lib")
+_FLINK_LIB = (
+    "/opt/.tmp/flink-lib"
+    if project_root == "/opt"
+    else os.path.abspath(os.path.join(project_root, "..", ".tmp", "flink-lib"))
+)
 
 _STORAGE_OPTIONS = {
     "endpoint_url":      f"http://{MINIO_HOST}:{MINIO_PORT}",
