@@ -65,6 +65,12 @@ Crawls all data sources and pushes catalogue metadata to DataHub GMS.
 
 > **Note:** The schedule can be changed in `config/orchestration/dags/datahub_ingestion.py` (`schedule_interval`). Default is `*/5 * * * *` (every 5 min) for development; change to `0 */6 * * *` for production.
 
+
+
+**Registered data sources (postgres, kafka, hive, trino, minio):**
+
+![DataHub — Manage Data Sources](../artifacts/datahub_source.png)
+
 ---
 
 
@@ -135,6 +141,11 @@ The `validate_bronze` Airflow task runs three checks per Bronze table and emits 
 
 Assertion results are visible in DataHub under each dataset's **Assertions** tab.
 
+
+| Data quality | Data assertion (failed example for unique key violation) | 
+|---|---|
+| ![DataHub — Manage Data Sources](../artifacts/datahub_assertion2.png) | ![DataHub — Manage Data Sources](../artifacts/datahub_assertion1.png) |
+
 ---
 
 ### Metadata Enrichment
@@ -150,17 +161,16 @@ The enrichment script (`scripts/misc/datahub_enrich_metadata.py`) sets:
 - **Domain:** `healthcare` or `machine-learning`
 - **Custom Properties:** `layer`, `grain`, `feast_view`, `window`, `sla`
 
+
+**Dataset schema view:**
+![DataHub — Dataset Schema](../artifacts/datahub_schema.png)
 ---
 
 
 
-**Registered data sources (postgres, kafka, hive, trino, minio):**
-
-![DataHub — Manage Data Sources](../artifacts/datahub_source.png)
 
 
 
-**Dataset schema view:**
 
-![DataHub — Dataset Schema](../artifacts/datahub_schema.png)
+
 
