@@ -1,0 +1,295 @@
+# Simplified Kafka setup for local development (KRaft mode - no ZooKeeper needed)
+# Reconfigured to use network_mode: host, x-podman.uidmaps/gidmaps extensions, and direct /tmp bind mounts for 100% rootless Podman compatibility
+version: '3.8'
+
+services:
+  kafka:
+    image: docker.io/confluentinc/cp-kafka:latest
+    hostname: kafka
+    container_name: kafka
+    network_mode: host
+    user: "1000:1000"
+    working_dir: /tmp
+    x-podman.uidmaps:
+      - "1000:0:1"
+    x-podman.gidmaps:
+      - "1000:0:1"
+    environment:
+      # These settings configure Kafka to run in KRaft mode (no ZooKeeper)
+      KAFKA_PROCESS_ROLES: controller,broker
+      KAFKA_NODE_ID: 1
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@127.0.0.1:${KAFKA_CONTROLLER_PORT:-9093}"
+      # Kafka listeners and advertised listeners
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:${KAFKA_PORT},CONTROLLER://0.0.0.0:${KAFKA_CONTROLLER_PORT:-9093}
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      # Advertise different addresses for internal vs external clients
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://127.0.0.1:${KAFKA_PORT}
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      # Optional: Set a unique cluster ID for KRaft mode
+      CLUSTER_ID: "Mk3OEYBSD34fcwNTJENDM2Qk"
+    volumes:
+      - ../../.tmp/kafka-data:/var/lib/kafka/data
+
+  postgres:
+    image: docker.io/library/postgres:15-alpine
+    hostname: postgres
+    container_name: postgres
+    network_mode: host
+    user: "999:999"
+    x-podman.uidmaps:
+      - "999:0:1"
+    x-podman.gidmaps:
+      - "999:0:1"
+    environment:
+      - POSTGRES_USER=$POSTGRES_USER
+      - POSTGRES_PASSWORD=$POSTGRES_PASSWORD
+      - POSTGRES_DB=$POSTGRES_DB
+      - PGPORT=$POSTGRES_PORT
+    volumes:
+      - ../../.tmp/postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    command: ["postgres", "-c", "wal_level=logical", "-c", "lock_timeout=30000", "-c", "idle_in_transaction_session_timeout=60000"]
+
+  schema-registry:
+    image: docker.io/confluentinc/cp-schema-registry:latest
+    hostname: schema-registry
+    container_name: schema-registry
+    network_mode: host
+    user: "1000:1000"
+    x-podman.uidmaps:
+      - "1000:0:1"
+    x-podman.gidmaps:
+      - "1000:0:1"
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: 127.0.0.1
+      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:${SCHEMA_REGISTRY_PORT:-8081}
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: 127.0.0.1:${KAFKA_PORT:-9092}
+    depends_on:
+      - kafka
+
+  redpanda-console:
+    image: docker.io/redpandadata/console:latest
+    container_name: redpanda-console
+    network_mode: host
+    user: "1000:1000"
+    x-podman.uidmaps:
+      - "1000:0:1"
+    x-podman.gidmaps:
+      - "1000:0:1"
+    environment:
+      KAFKA_BROKERS: "127.0.0.1:${KAFKA_PORT:-9092}"
+      KAFKA_SCHEMAREGISTRY_ENABLED: "true"
+      KAFKA_SCHEMAREGISTRY_URLS: "http://127.0.0.1:${SCHEMA_REGISTRY_PORT:-8081}"
+      SERVER_LISTENPORT: "${REDPANDA_CONSOLE_PORT:-8086}"
+    depends_on:
+      - kafka
+      - schema-registry
+
+  redis:
+    image: docker.io/library/redis:7-alpine
+    hostname: redis
+    container_name: redis
+    network_mode: host
+    user: "999:999"
+    x-podman.uidmaps:
+      - "999:0:1"
+    x-podman.gidmaps:
+      - "999:0:1"
+    volumes:
+      - ../../.tmp/redis-data:/data
+    command: redis-server --port ${REDIS_PORT:-6379} --save 60 1 --loglevel warning
+
+  minio:
+    image: docker.io/minio/minio:latest
+    container_name: minio
+    network_mode: host
+    user: "1000:1000"
+    x-podman.uidmaps:
+      - "1000:0:1"
+    x-podman.gidmaps:
+      - "1000:0:1"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    command: server /data --address ":${MINIO_PORT:-9000}" --console-address ":${MINIO_CONSOLE_PORT:-9001}"
+    volumes:
+      - ../../.tmp/minio-data:/data
+
+  hive-metastore:
+    image: docker.io/starburstdata/hive:3.1.2-e.18
+    container_name: hive-metastore
+    network_mode: host
+    user: "1000:1000"
+    x-podman.uidmaps:
+      - "1000:0:1"
+    x-podman.gidmaps:
+      - "1000:0:1"
+    environment:
+      HIVE_METASTORE_DRIVER: org.postgresql.Driver
+      HIVE_METASTORE_JDBC_URL: jdbc:postgresql://127.0.0.1:${POSTGRES_PORT:-5432}/${METASTORE_DB_NAME:-metastore}?socketTimeout=30&connectTimeout=10
+      HIVE_METASTORE_USER: ${METASTORE_DB_USER:-hive}
+      HIVE_METASTORE_PASSWORD: ${METASTORE_DB_PASSWORD:-hive}
+      S3_ENDPOINT: http://127.0.0.1:${MINIO_PORT:-9000}
+      S3_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
+      S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      S3_PATH_STYLE_ACCESS: "true"
+      REGION: ""
+      GOOGLE_CLOUD_KEY_FILE_PATH: ""
+      AZURE_ADL_CLIENT_ID: ""
+      AZURE_ADL_CREDENTIAL: ""
+      AZURE_ADL_REFRESH_URL: ""
+      AZURE_ABFS_STORAGE_ACCOUNT: ""
+      AZURE_ABFS_ACCESS_KEY: ""
+      AZURE_WASB_STORAGE_ACCOUNT: ""
+      AZURE_ABFS_OAUTH: ""
+      AZURE_ABFS_OAUTH_TOKEN_PROVIDER: ""
+      AZURE_ABFS_OAUTH_CLIENT_ID: ""
+      AZURE_ABFS_OAUTH_SECRET: ""
+      AZURE_ABFS_OAUTH_ENDPOINT: ""
+      AZURE_WASB_ACCESS_KEY: ""
+    volumes:
+      - ./conf/hive/hivemetastore-site.xml:/opt/apache-hive-3.1.2-bin/conf/hivemetastore-site.xml:ro
+    depends_on:
+      - postgres
+      - minio
+
+  trino:
+    image: docker.io/trinodb/trino:480
+    container_name: trino
+    network_mode: host
+    user: "1000:1000"
+    x-podman.uidmaps:
+      - "1000:0:1"
+    x-podman.gidmaps:
+      - "1000:0:1"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      METASTORE_DB_NAME: ${METASTORE_DB_NAME:-metastore}
+      METASTORE_DB_USER: ${METASTORE_DB_USER:-hive}
+      METASTORE_DB_PASSWORD: ${METASTORE_DB_PASSWORD:-hive}
+    volumes:
+      - ./conf/trino/catalog:/etc/trino/catalog
+      - ./conf/trino/config.properties:/etc/trino/config.properties
+    depends_on:
+      - hive-metastore
+
+
+  
+  # ── Spark Standalone Cluster ───────────────────────────────────────────────────
+  # Official Apache Spark image. Runs as UID 185 ('spark' user).
+  # Jobs are submitted from the host via: uv run spark-submit --master spark://127.0.0.1:7077
+  spark-master:
+    image: localhost/spark-3.12:latest
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile.spark
+    container_name: spark-master
+    network_mode: host
+    user: "185:185"
+    x-podman.uidmaps:
+      - "185:0:1"
+    x-podman.gidmaps:
+      - "185:0:1"
+    # Use spark-class directly — the official entrypoint only handles 'driver'/'executor'
+    # (Kubernetes modes). For Standalone cluster we call the Java class directly.
+    command:
+      - "/opt/spark/bin/spark-class"
+      - "org.apache.spark.deploy.master.Master"
+      - "--host"
+      - "127.0.0.1"
+      - "--port"
+      - "${SPARK_MASTER_PORT:-7077}"
+      - "--webui-port"
+      - "${SPARK_WEBUI_PORT:-8089}"
+    environment:
+      SPARK_NO_DAEMONIZE: "true"
+      SPARK_LOCAL_IP: "127.0.0.1"
+      PYSPARK_PYTHON: /usr/local/bin/python3.12
+    volumes:
+      - ../../.tmp/spark-logs:/opt/spark/logs
+    depends_on:
+      - minio
+
+  spark-worker:
+    image: localhost/spark-3.12:latest
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile.spark
+    container_name: spark-worker
+    network_mode: host
+    user: "185:185"
+    x-podman.uidmaps:
+      - "185:0:1"
+    x-podman.gidmaps:
+      - "185:0:1"
+    command:
+      - "/opt/spark/bin/spark-class"
+      - "org.apache.spark.deploy.worker.Worker"
+      - "spark://127.0.0.1:${SPARK_MASTER_PORT:-7077}"
+    environment:
+      SPARK_WORKER_MEMORY: "${SPARK_WORKER_MEMORY:-2g}"
+      SPARK_WORKER_CORES: "${SPARK_WORKER_CORES:-2}"
+      SPARK_WORKER_WEBUI_PORT: "${SPARK_WORKER_WEBUI_PORT:-8091}"
+      SPARK_NO_DAEMONIZE: "true"
+      SPARK_LOCAL_IP: "127.0.0.1"
+      PYSPARK_PYTHON: /usr/local/bin/python3.12
+    volumes:
+      - ../../.tmp/spark-logs:/opt/spark/logs
+    depends_on:
+      - spark-master
+
+
+  # ── Apache Flink Streaming Cluster ────────────────────────────────────────────
+  # Handles real-time 24h sliding window feature computation per patient.
+  # The Kafka SQL connector JAR must be placed in .tmp/flink-lib/ before starting:
+  #   wget -P .tmp/flink-lib https://repo1.maven.org/maven2/org/apache/flink/flink-sql-connector-kafka/3.1.0-1.19/flink-sql-connector-kafka-3.1.0-1.19.jar
+  flink-jobmanager:
+    image: docker.io/apache/flink:2.2.0-java17
+    container_name: flink-jobmanager
+    network_mode: host
+    user: "9999:9999"
+    x-podman.uidmaps:
+      - "9999:0:1"
+    x-podman.gidmaps:
+      - "9999:0:1"
+    command: jobmanager
+    environment:
+      FLINK_PROPERTIES: |
+        jobmanager.rpc.address: 127.0.0.1
+        jobmanager.rpc.port: ${FLINK_JM_PORT:-6123}
+        rest.address: 127.0.0.1
+        rest.port: ${FLINK_REST_PORT:-8088}
+        python.client.executable: python3
+        taskmanager.numberOfTaskSlots: 4
+    volumes:
+      - ../../.tmp/flink-logs:/opt/flink/log
+      - ../../.tmp/flink-lib:/opt/flink/lib/extra:ro
+
+  flink-taskmanager:
+    image: docker.io/apache/flink:2.2.0-java17
+    container_name: flink-taskmanager
+    network_mode: host
+    user: "9999:9999"
+    x-podman.uidmaps:
+      - "9999:0:1"
+    x-podman.gidmaps:
+      - "9999:0:1"
+    command: taskmanager
+    environment:
+      FLINK_PROPERTIES: |
+        jobmanager.rpc.address: 127.0.0.1
+        jobmanager.rpc.port: ${FLINK_JM_PORT:-6123}
+        taskmanager.numberOfTaskSlots: 4
+        taskmanager.memory.process.size: 2g
+        python.client.executable: python3
+    volumes:
+      - ../../.tmp/flink-logs:/opt/flink/log
+      - ../../.tmp/flink-lib:/opt/flink/lib/extra:ro
+    depends_on:
+      - flink-jobmanager

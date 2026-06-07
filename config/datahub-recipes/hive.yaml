@@ -1,0 +1,8 @@
+source:
+  type: "hive-metastore"
+  config:
+    host_port: "127.0.0.1:${HIVE_METASTORE_PORT}"
+sink:
+  type: "datahub-rest"
+  config:
+    server: "${DATAHUB_GMS_URL}"

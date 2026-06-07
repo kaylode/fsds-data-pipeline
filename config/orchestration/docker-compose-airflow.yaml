@@ -1,0 +1,95 @@
+version: '3.8'
+
+x-airflow-common:
+  &airflow-common
+  image: localhost/airflow-custom:latest
+  network_mode: host
+  environment:
+    &airflow-common-env
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${AIRFLOW_DB_USER:-airflow}:${AIRFLOW_DB_PASSWORD:-airflow}@127.0.0.1:5432/${AIRFLOW_DB_NAME:-airflow}
+    AIRFLOW__CORE__FERNET_KEY: '${AIRFLOW_FERNET_KEY:-}'
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
+    AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+    AIRFLOW__WEBSERVER__WORKERS: '2'
+    AIRFLOW__WEBSERVER__WEB_SERVER_MASTER_TIMEOUT: '300'
+    AIRFLOW__WEBSERVER__WORKER_TIMEOUT: '300'
+    AIRFLOW__LOGGING__DAG_PROCESSOR_MANAGER_LOG_LOCATION: /opt/airflow/logs/dag_processor_manager/dag_processor_manager.log
+    AIRFLOW__DATAHUB__ENABLED: '${AIRFLOW_DATAHUB_ENABLED:-false}'
+    AIRFLOW_CONN_DATAHUB_REST_DEFAULT: '{"conn_type": "datahub_rest", "host": "http://127.0.0.1:${DATAHUB_GMS_PORT:-8088}"}'
+    DATAHUB_GMS_URL: 'http://127.0.0.1:${DATAHUB_GMS_PORT:-8088}'
+    AIRFLOW__WEBSERVER__WEB_SERVER_PORT: '${AIRFLOW_WEBSERVER_PORT:-8082}'
+    # Data source connection details
+    POSTGRES_HOST: '127.0.0.1'
+    POSTGRES_PORT: '${POSTGRES_PORT:-5432}'
+    POSTGRES_DB: '${POSTGRES_DB:-postgres}'
+    POSTGRES_USER: '${POSTGRES_USER:-postgres}'
+    POSTGRES_PASSWORD: '${POSTGRES_PASSWORD:-postgres}'
+    KAFKA_PORT: '${KAFKA_PORT:-9092}'
+    SCHEMA_REGISTRY_PORT: '${SCHEMA_REGISTRY_PORT:-8081}'
+    HIVE_METASTORE_PORT: '${HIVE_METASTORE_PORT:-9083}'
+    TRINO_PORT: '${TRINO_PORT:-8090}'
+    MINIO_PORT: '${MINIO_PORT:-9000}'
+    MINIO_ROOT_USER: '${MINIO_ROOT_USER:-minioadmin}'
+    MINIO_ROOT_PASSWORD: '${MINIO_ROOT_PASSWORD:-minioadmin}'
+    # ehr_data_pipeline.py — paths inside the container
+    SCRIPTS_DIR: '/opt/airflow/scripts'
+    FEAST_REPO_DIR: '/opt/airflow/feature_store'
+    FLINK_REST_URL: 'http://127.0.0.1:${FLINK_REST_PORT:-8095}'
+    STREAM_PUSH_TIMEOUT_S: '${STREAM_PUSH_TIMEOUT_S:-60}'
+  volumes:
+    - ./dags:/opt/airflow/dags
+    - ./logs:/opt/airflow/logs
+    - ./plugins:/opt/airflow/plugins
+    - ../../data:/opt/data              # Mount generated synthetic Parquet tables
+    - ../../scripts/main:/opt/airflow/scripts:ro   # EHR pipeline scripts (2a–7)
+    - ../feature_store:/opt/airflow/feature_store      # Feast repo (feature_store.yaml + feature_definitions.py)
+    - ../../../.tmp/flink-lib:/opt/.tmp/flink-lib:ro
+  user: "${AIRFLOW_UID:-50000}:0"
+  x-podman.uidmaps:
+    - "${AIRFLOW_UID:-50000}:0:1"
+  x-podman.gidmaps:
+    - "0:0:1"
+
+services:
+  # ── Airflow Web UI ───────────────────────────────────────────────────────────
+  airflow-webserver:
+    <<: *airflow-common
+    container_name: airflow-webserver
+    command: webserver
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail http://127.0.0.1:${AIRFLOW_WEBSERVER_PORT:-8082}/health"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  # ── Airflow Scheduler ────────────────────────────────────────────────────────
+  airflow-scheduler:
+    <<: *airflow-common
+    container_name: airflow-scheduler
+    command: scheduler
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "airflow jobs check --job-type SchedulerJob --hostname $(hostname)"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # ── One-time DB init + admin user creation ──────────────────────────────────
+  airflow-init:
+    <<: *airflow-common
+    container_name: airflow-init
+    command: version
+    environment:
+      <<: *airflow-common-env
+      _AIRFLOW_DB_UPGRADE: 'true'
+      _AIRFLOW_WWW_USER_CREATE: 'true'
+      _AIRFLOW_WWW_USER_USERNAME: ${_AIRFLOW_WWW_USER_USERNAME:-airflow}
+      _AIRFLOW_WWW_USER_PASSWORD: ${_AIRFLOW_WWW_USER_PASSWORD:-airflow}
+

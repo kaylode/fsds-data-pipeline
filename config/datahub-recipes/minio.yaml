@@ -1,0 +1,14 @@
+source:
+  type: "s3"
+  config:
+    aws_config:
+      aws_access_key_id: "${MINIO_ROOT_USER}"
+      aws_secret_access_key: "${MINIO_ROOT_PASSWORD}"
+      aws_endpoint_url: "http://127.0.0.1:${MINIO_PORT}"
+      aws_region: "us-east-1"
+    path_specs:
+      - include: "s3://lakehouse/topics/{table}/*"
+sink:
+  type: "datahub-rest"
+  config:
+    server: "${DATAHUB_GMS_URL}"

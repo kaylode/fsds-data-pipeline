@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+<configuration>
+  <!-- Disable per-request DataNucleus schema validation (the root cause of ~10s hangs).
+       Each new Thrift server thread initialises ObjectStore and triggers validation without this. -->
+  <property>
+    <name>datanucleus.schema.validateAll</name>
+    <value>false</value>
+  </property>
+  <property>
+    <name>datanucleus.schema.validateColumns</name>
+    <value>false</value>
+  </property>
+  <property>
+    <name>datanucleus.schema.validateConstraints</name>
+    <value>false</value>
+  </property>
+
+  <!-- Pre-warm the JDBC connection pool so threads don't open fresh PG connections on each request -->
+  <property>
+    <name>datanucleus.connectionPool.minPoolSize</name>
+    <value>5</value>
+  </property>
+  <property>
+    <name>datanucleus.connectionPool.maxPoolSize</name>
+    <value>10</value>
+  </property>
+  <property>
+    <name>datanucleus.connectionPool.initialPoolSize</name>
+    <value>5</value>
+  </property>
+
+  <!-- Suppress the spurious "autoStartMechanismMode null" warning -->
+  <property>
+    <name>datanucleus.autoStartMechanismMode</name>
+    <value>ignored</value>
+  </property>
+</configuration>

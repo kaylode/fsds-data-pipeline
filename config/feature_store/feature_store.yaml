@@ -1,0 +1,24 @@
+project: ehr_feature_store
+project_description: This Feast project is a Trino Offline Store demo.
+provider: local
+registry: data/registry.db
+offline_store:
+    type: trino
+    host: 127.0.0.1
+    port: 8090
+    http-scheme: http
+    ssl-verify: false
+    catalog: delta
+    dataset: gold
+    connector:
+        type: delta
+    user: trino
+    auth: ~
+online_store:
+    type: redis
+    connection_string: 127.0.0.1:6379
+# Prevents "Unsupported Hive type: timestamp(3) with time zone" TrinoUserError
+coerce_tz_aware: false
+entity_key_serialization_version: 3
+auth:
+    type: no_auth

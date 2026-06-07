@@ -1,0 +1,254 @@
+# DataHub Metadata Platform — overlay stack
+# Start AFTER the core stack:  make up && make datahub-up
+# Stop independently:          make datahub-down
+#
+# All services use network_mode: host so they reach core infrastructure
+# (postgres, kafka, schema-registry) on localhost without any shared
+# compose network declaration.
+version: '3.8'
+
+services:
+
+  opensearch:
+    image: docker.io/opensearchproject/opensearch:2.19.3
+    hostname: search
+    container_name: datahub-opensearch
+    network_mode: host
+    user: "1000:1000"
+    x-podman.uidmaps:
+      - "1000:0:1"
+    x-podman.gidmaps:
+      - "1000:0:1"
+    environment:
+      discovery.type: single-node
+      DISABLE_SECURITY_PLUGIN: "true"
+      OPENSEARCH_JAVA_OPTS: "-Xms512m -Xmx512m"
+      plugins.index_state_management.enabled: "false"
+      network.host: "0.0.0.0"
+      # Disable mmap so OpenSearch starts without vm.max_map_count=262144.
+      # If you can run: sudo sysctl -w vm.max_map_count=262144
+      # then remove this line for better index performance.
+      node.store.allow_mmap: "false"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sS --fail 'http://127.0.0.1:${OPENSEARCH_PORT:-9200}/_cluster/health?wait_for_status=yellow&timeout=10s'"]
+      interval: 10s
+      timeout: 20s
+      retries: 15
+      start_period: 120s
+
+  datahub-system-update:
+    image: docker.io/acryldata/datahub-upgrade:v1.5.0.6
+    hostname: datahub-system-update
+    container_name: datahub-system-update
+    network_mode: host
+    user: "1000:1000"
+    x-podman.uidmaps:
+      - "1000:0:1"
+    x-podman.gidmaps:
+      - "1000:0:1"
+    command: ["-u", "SystemUpdate"]
+    restart: on-failure
+    depends_on:
+      - opensearch
+    environment:
+      EBEAN_DATASOURCE_URL: "jdbc:postgresql://127.0.0.1:${POSTGRES_PORT:-5432}/${DATAHUB_DB_NAME:-datahub}"
+      EBEAN_DATASOURCE_DRIVER: "org.postgresql.Driver"
+      EBEAN_DATASOURCE_USERNAME: ${DATAHUB_DB_USER:-datahub}
+      EBEAN_DATASOURCE_PASSWORD: ${DATAHUB_DB_PASSWORD:-datahub_password}
+      EBEAN_DATASOURCE_HOST: "127.0.0.1:${POSTGRES_PORT:-5432}"
+      ELASTICSEARCH_HOST: "127.0.0.1"
+      ELASTICSEARCH_PORT: "${OPENSEARCH_PORT:-9200}"
+      ELASTICSEARCH_PROTOCOL: http
+      ELASTICSEARCH_USE_SSL: "false"
+      ELASTICSEARCH_IMPLEMENTATION: opensearch
+      ELASTICSEARCH_INDEX_BUILDER_MAPPINGS_REINDEX: "true"
+      ELASTICSEARCH_INDEX_BUILDER_SETTINGS_REINDEX: "true"
+      ELASTICSEARCH_INDEX_BUILDER_REFRESH_INTERVAL_SECONDS: "3"
+      ELASTICSEARCH_BUILD_INDICES_CLONE_INDICES: "false"
+      KAFKA_BOOTSTRAP_SERVER: "127.0.0.1:${KAFKA_PORT:-9092}"
+      GRAPH_SERVICE_IMPL: elasticsearch
+      ENTITY_REGISTRY_CONFIG_PATH: /datahub/datahub-gms/resources/entity-registry.yml
+      DATAHUB_SQL_SETUP_ENABLED: "true"
+      DATAHUB_PRECREATE_TOPICS: "true"
+      METADATA_SERVICE_AUTH_ENABLED: "false"
+      DATAHUB_TOKEN_SERVICE_SIGNING_KEY: "WnEdIeTG/VVCLQqGwC/BAkqyY0k+H8NEAtWGejrBI94="
+      DATAHUB_TOKEN_SERVICE_SALT: "YouKnowNothingJohnSnow"
+      DATAHUB_GMS_HOST: 127.0.0.1
+      DATAHUB_GMS_PORT: "${DATAHUB_GMS_PORT:-8088}"
+      DATAHUB_BASE_PATH: /
+      DATAHUB_GMS_BASE_PATH: /
+      KAFKA_SCHEMAREGISTRY_URL: "http://127.0.0.1:${SCHEMA_REGISTRY_PORT:-8081}"
+      SPRING_KAFKA_PROPERTIES_AUTO_REGISTER_SCHEMAS: "true"
+      SPRING_KAFKA_PROPERTIES_USE_LATEST_VERSION: "true"
+      USE_CONFLUENT_SCHEMA_REGISTRY: "true"
+      ENTITY_VERSIONING_ENABLED: "true"
+      PARTITIONS: "3"
+
+  datahub-gms:
+    image: docker.io/acryldata/datahub-gms:v1.5.0.6
+    hostname: datahub-gms
+    container_name: datahub-gms
+    network_mode: host
+    user: "1000:1000"
+    x-podman.uidmaps:
+      - "1000:0:1"
+    x-podman.gidmaps:
+      - "1000:0:1"
+    restart: on-failure
+    depends_on:
+      - opensearch
+      - datahub-system-update
+    environment:
+      EBEAN_DATASOURCE_URL: "jdbc:postgresql://127.0.0.1:${POSTGRES_PORT:-5432}/${DATAHUB_DB_NAME:-datahub}"
+      EBEAN_DATASOURCE_DRIVER: "org.postgresql.Driver"
+      EBEAN_DATASOURCE_USERNAME: ${DATAHUB_DB_USER:-datahub}
+      EBEAN_DATASOURCE_PASSWORD: ${DATAHUB_DB_PASSWORD:-datahub_password}
+      EBEAN_DATASOURCE_HOST: "127.0.0.1:${POSTGRES_PORT:-5432}"
+      ELASTICSEARCH_HOST: "127.0.0.1"
+      ELASTICSEARCH_PORT: "${OPENSEARCH_PORT:-9200}"
+      ELASTICSEARCH_PROTOCOL: http
+      ELASTICSEARCH_USE_SSL: "false"
+      ELASTICSEARCH_IMPLEMENTATION: opensearch
+      ELASTICSEARCH_INDEX_BUILDER_MAPPINGS_REINDEX: "true"
+      ELASTICSEARCH_INDEX_BUILDER_SETTINGS_REINDEX: "true"
+      ELASTICSEARCH_LIMIT_RESULTS_STRICT: "true"
+      ES_BULK_REFRESH_POLICY: WAIT_UNTIL
+      SERVER_PORT: "${DATAHUB_GMS_PORT:-8088}"
+      SERVER_ADDRESS: "0.0.0.0"
+      KAFKA_BOOTSTRAP_SERVER: "127.0.0.1:${KAFKA_PORT:-9092}"
+      KAFKA_SCHEMAREGISTRY_URL: "http://127.0.0.1:${SCHEMA_REGISTRY_PORT:-8081}"
+      GRAPH_SERVICE_IMPL: elasticsearch
+      GRAPH_SERVICE_DIFF_MODE_ENABLED: "false"
+      ENTITY_REGISTRY_CONFIG_PATH: /datahub/datahub-gms/resources/entity-registry.yml
+      METADATA_SERVICE_AUTH_ENABLED: "false"
+      DATAHUB_TOKEN_SERVICE_SIGNING_KEY: "WnEdIeTG/VVCLQqGwC/BAkqyY0k+H8NEAtWGejrBI94="
+      DATAHUB_TOKEN_SERVICE_SALT: "YouKnowNothingJohnSnow"
+      DATAHUB_UPGRADE_HISTORY_KAFKA_CONSUMER_GROUP_ID: generic-duhe-consumer-job-client-gms
+      SPRING_KAFKA_PROPERTIES_AUTO_REGISTER_SCHEMAS: "true"
+      SPRING_KAFKA_PROPERTIES_USE_LATEST_VERSION: "true"
+      USE_CONFLUENT_SCHEMA_REGISTRY: "true"
+      MAE_CONSUMER_ENABLED: "true"
+      MCE_CONSUMER_ENABLED: "true"
+      PE_CONSUMER_ENABLED: "true"
+      ENTITY_SERVICE_ENABLE_RETENTION: "true"
+      ENTITY_VERSIONING_ENABLED: "true"
+      UI_INGESTION_ENABLED: "true"
+      ALTERNATE_MCP_VALIDATION: "true"
+      CONFIG_ENTITY_REGISTRY_USE_OPTIMIZED_LOADING: "true"
+      EXTRACT_JAR_ENABLED: "true"
+      STRICT_URN_VALIDATION_ENABLED: "true"
+      SEARCH_BAR_API_VARIANT: SEARCH_ACROSS_ENTITIES
+      POLICY_CACHE_REFRESH_INTERVAL_SECONDS: "120"
+      DATAHUB_SERVER_TYPE: quickstart
+      DATAHUB_TELEMETRY_ENABLED: "false"
+      DATAHUB_BASE_PATH: /
+      DATAHUB_GMS_BASE_PATH: /
+      SHOW_HOME_PAGE_REDESIGN: "true"
+      SHOW_INGESTION_PAGE_REDESIGN: "true"
+      SHOW_SEARCH_BAR_AUTOCOMPLETE_REDESIGN: "true"
+      SHOW_HAS_SIBLINGS_FILTER: "true"
+      THEME_V2_DEFAULT: "true"
+      DATAHUB_EMIT_MODE: SYNC_PRIMARY
+
+  datahub-restore-indices:
+    image: docker.io/acryldata/datahub-upgrade:v1.5.0.6
+    hostname: datahub-restore-indices
+    container_name: datahub-restore-indices
+    network_mode: host
+    user: "1000:1000"
+    x-podman.uidmaps:
+      - "1000:0:1"
+    x-podman.gidmaps:
+      - "1000:0:1"
+    command: ["-u", "RestoreIndices"]
+    restart: "no"
+    depends_on:
+      - datahub-gms
+    environment:
+      EBEAN_DATASOURCE_URL: "jdbc:postgresql://127.0.0.1:${POSTGRES_PORT:-5432}/${DATAHUB_DB_NAME:-datahub}"
+      EBEAN_DATASOURCE_DRIVER: "org.postgresql.Driver"
+      EBEAN_DATASOURCE_USERNAME: ${DATAHUB_DB_USER:-datahub}
+      EBEAN_DATASOURCE_PASSWORD: ${DATAHUB_DB_PASSWORD:-datahub_password}
+      EBEAN_DATASOURCE_HOST: "127.0.0.1:${POSTGRES_PORT:-5432}"
+      ELASTICSEARCH_HOST: "127.0.0.1"
+      ELASTICSEARCH_PORT: "${OPENSEARCH_PORT:-9200}"
+      ELASTICSEARCH_PROTOCOL: http
+      ELASTICSEARCH_USE_SSL: "false"
+      ELASTICSEARCH_IMPLEMENTATION: opensearch
+      GRAPH_SERVICE_IMPL: elasticsearch
+      ENTITY_REGISTRY_CONFIG_PATH: /datahub/datahub-gms/resources/entity-registry.yml
+      METADATA_SERVICE_AUTH_ENABLED: "false"
+      DATAHUB_TOKEN_SERVICE_SIGNING_KEY: "WnEdIeTG/VVCLQqGwC/BAkqyY0k+H8NEAtWGejrBI94="
+      DATAHUB_TOKEN_SERVICE_SALT: "YouKnowNothingJohnSnow"
+      KAFKA_BOOTSTRAP_SERVER: "127.0.0.1:${KAFKA_PORT:-9092}"
+      KAFKA_SCHEMAREGISTRY_URL: "http://127.0.0.1:${SCHEMA_REGISTRY_PORT:-8081}"
+      USE_CONFLUENT_SCHEMA_REGISTRY: "true"
+      SPRING_KAFKA_PROPERTIES_AUTO_REGISTER_SCHEMAS: "true"
+      SPRING_KAFKA_PROPERTIES_USE_LATEST_VERSION: "true"
+      DATAHUB_GMS_HOST: 127.0.0.1
+      DATAHUB_GMS_PORT: "${DATAHUB_GMS_PORT:-8088}"
+
+  datahub-actions:
+    image: docker.io/acryldata/datahub-actions:v0.0.15
+    hostname: actions
+    container_name: datahub-actions
+    network_mode: host
+    user: "1000:1000"
+    x-podman.uidmaps:
+      - "1000:0:1"
+    x-podman.gidmaps:
+      - "1000:0:1"
+    depends_on:
+      - datahub-gms
+    command: ["/bin/sh", "-c", "dockerize -wait $${DATAHUB_GMS_PROTOCOL:-http}://$$DATAHUB_GMS_HOST:$$DATAHUB_GMS_PORT/health -timeout 600s /start_datahub_actions.sh"]
+    environment:
+      DATAHUB_GMS_HOST: "127.0.0.1"
+      DATAHUB_GMS_PORT: "${DATAHUB_GMS_PORT:-8088}"
+      DATAHUB_GMS_URL: "http://127.0.0.1:${DATAHUB_GMS_PORT:-8088}"
+      DATAHUB_GMS_PROTOCOL: "http"
+      DATAHUB_SYSTEM_CLIENT_ID: __datahub_system
+      DATAHUB_SYSTEM_CLIENT_SECRET: JohnSnowKnowsNothing
+      KAFKA_BOOTSTRAP_SERVER: "127.0.0.1:${KAFKA_PORT:-9092}"
+      KAFKA_PROPERTIES_SECURITY_PROTOCOL: PLAINTEXT
+      SCHEMA_REGISTRY_URL: "http://127.0.0.1:${SCHEMA_REGISTRY_PORT:-8081}"
+      POSTGRES_HOST: "127.0.0.1"
+      POSTGRES_PORT: "${POSTGRES_PORT:-5432}"
+      POSTGRES_DB: "${POSTGRES_DB:-postgres}"
+      POSTGRES_USER: "${POSTGRES_USER:-postgres}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-postgres}"
+      KAFKA_PORT: "${KAFKA_PORT:-9092}"
+      SCHEMA_REGISTRY_PORT: "${SCHEMA_REGISTRY_PORT:-8081}"
+      HIVE_METASTORE_PORT: "${HIVE_METASTORE_PORT:-9083}"
+      TRINO_PORT: "${TRINO_PORT:-8090}"
+      MINIO_PORT: "${MINIO_PORT:-9000}"
+      MINIO_ROOT_USER: "${MINIO_ROOT_USER:-minioadmin}"
+      MINIO_ROOT_PASSWORD: "${MINIO_ROOT_PASSWORD:-minioadmin}"
+    volumes:
+      - ./datahub-recipes:/datahub-recipes:ro
+      - ./feature_store:/feast-repo:ro
+
+  datahub-frontend:
+    image: docker.io/acryldata/datahub-frontend-react:v1.5.0.6
+    hostname: datahub-frontend-react
+    container_name: datahub-frontend-react
+    network_mode: host
+    user: "1000:1000"
+    x-podman.uidmaps:
+      - "1000:0:1"
+    x-podman.gidmaps:
+      - "1000:0:1"
+    depends_on:
+      - datahub-gms
+    environment:
+      DATAHUB_GMS_HOST: "127.0.0.1"
+      DATAHUB_GMS_PORT: "${DATAHUB_GMS_PORT:-8088}"
+      DATAHUB_SECRET: "YouKnowNothing"
+      DATAHUB_APP_VERSION: "v1.5.0.6"
+      DATAHUB_PLAY_MEM_BUFFER_SIZE: "10MB"
+      DATAHUB_TRACKING_TOPIC: DataHubUsageEvent_v1
+      KAFKA_BOOTSTRAP_SERVER: "127.0.0.1:${KAFKA_PORT:-9092}"
+      ELASTIC_CLIENT_HOST: "127.0.0.1"
+      ELASTIC_CLIENT_PORT: "${OPENSEARCH_PORT:-9200}"
+      DATAHUB_BASE_PATH: /
+      DATAHUB_GMS_BASE_PATH: /
+      THEME_V2_DEFAULT: "true"
